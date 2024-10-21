@@ -58,6 +58,22 @@ const styles = {
     minHeight: "100px",
     marginTop: "10px",
   },
+  summaryContainer: {
+    padding: "20px",
+    backgroundColor: "#f9f9f9",
+    borderRadius: "8px",
+    border: "1px solid #ddd",
+    margin: "20px 0",
+    color: "#333",
+  },
+  listItem: {
+    marginBottom: "10px",
+    fontSize: "16px",
+    lineHeight: "1.6",
+  },
+  boldText: {
+    fontWeight: "bold",
+  },
 };
 const App: React.FC = () => {
   const [prompt, setPrompt] = useState("");
@@ -155,7 +171,7 @@ const App: React.FC = () => {
   }, [session]);
 
   // Summarizer functions start
-  const MAX_MODEL_CHARS = 4000;
+  const MAX_MODEL_CHARS = 400000;
 
   useEffect(() => {
     const onContentChange = async (newContent: string) => {
@@ -176,6 +192,7 @@ const App: React.FC = () => {
       } else {
         summaryText = "There's nothing to summarize";
       }
+      console.log(summaryText)
       showSummary(summaryText);
     };
 
@@ -184,7 +201,8 @@ const App: React.FC = () => {
     };
 
     const showSummary = (summaryText: string) => {
-      setSummary(summaryText);
+      const sanitizedSummary = DOMPurify.sanitize(marked.parse(summaryText));
+      setSummary(sanitizedSummary);
     };
 
     const generateSummary = async (text: string) => {
@@ -209,7 +227,7 @@ const App: React.FC = () => {
 
       const summarizationSession = await window.ai.summarizer.create();
       await summarizationSession.ready;
-
+console.log(summarizationSession)
       return summarizationSession;
     };
 
@@ -315,9 +333,10 @@ const App: React.FC = () => {
       </div>
       <h2>Summarizer</h2>
       {warning && <div className="warning" style={{ color: 'red' }}>{warning}</div>}
-      <div id="summary-area" style={styles.responseArea}>
-        {summary}
-      </div>
+      <div
+        style={styles.summaryContainer}
+        dangerouslySetInnerHTML={{ __html: summary }}
+      />
 
     </div>
   );
