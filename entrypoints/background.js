@@ -19,6 +19,7 @@ export default defineBackground(() => {
       target: { tabId },
       files: ['injected.js']
     });
+    console.log(injection)
     chrome.storage.session.set({ pageContent: injection[0].result });
   }
   console.log('Hello background!', { id: browser.runtime.id });

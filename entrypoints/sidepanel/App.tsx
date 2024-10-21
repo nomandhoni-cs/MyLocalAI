@@ -2,6 +2,63 @@ import React, { useState, useEffect, useRef } from "react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 
+const styles = {
+  container: {
+    fontFamily: "Arial, sans-serif",
+    padding: "20px",
+    backgroundColor: "#f0f4f8",
+    borderRadius: "8px",
+    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
+    color: "#333",
+  },
+  label: {
+    display: "block",
+    marginBottom: "8px",
+    fontSize: "14px",
+    fontWeight: "bold",
+    color: "#555",
+  },
+  textarea: {
+    width: "100%",
+    padding: "10px",
+    fontSize: "14px",
+    borderRadius: "4px",
+    border: "1px solid #ccc",
+    marginBottom: "10px",
+    boxSizing: "border-box",
+  },
+  button: {
+    padding: "8px 16px",
+    fontSize: "14px",
+    margin: "5px",
+    backgroundColor: "#4CAF50",
+    color: "#fff",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  resetButton: {
+    backgroundColor: "#f44336",
+  },
+  statsTable: {
+    width: "100%",
+    borderCollapse: "collapse",
+    margin: "20px 0",
+  },
+  tableCell: {
+    border: "1px solid #ccc",
+    padding: "8px",
+    textAlign: "center",
+  },
+  responseArea: {
+    backgroundColor: "#fff",
+    padding: "10px",
+    borderRadius: "4px",
+    border: "1px solid #ccc",
+    minHeight: "100px",
+    marginTop: "10px",
+  },
+};
 const App: React.FC = () => {
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState("");
@@ -16,6 +73,13 @@ const App: React.FC = () => {
   const [cost, setCost] = useState(0);
   const [error, setError] = useState("");
   const [rawResponse, setRawResponse] = useState("");
+
+  // Summarizer States 
+  const [pageContent, setPageContent] = useState("");
+  const [summary, setSummary] = useState("");
+  const [warning, setWarning] = useState("");
+  //  Summarizer states end 
+
 
   const sessionTopKRef = useRef<HTMLInputElement>(null);
   const sessionTemperatureRef = useRef<HTMLInputElement>(null);
@@ -90,63 +154,77 @@ const App: React.FC = () => {
     }
   }, [session]);
 
-  const styles = {
-    container: {
-      fontFamily: "Arial, sans-serif",
-      padding: "20px",
-      backgroundColor: "#f0f4f8",
-      borderRadius: "8px",
-      boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
-      color: "#333",
-    },
-    label: {
-      display: "block",
-      marginBottom: "8px",
-      fontSize: "14px",
-      fontWeight: "bold",
-      color: "#555",
-    },
-    textarea: {
-      width: "100%",
-      padding: "10px",
-      fontSize: "14px",
-      borderRadius: "4px",
-      border: "1px solid #ccc",
-      marginBottom: "10px",
-      boxSizing: "border-box",
-    },
-    button: {
-      padding: "8px 16px",
-      fontSize: "14px",
-      margin: "5px",
-      backgroundColor: "#4CAF50",
-      color: "#fff",
-      border: "none",
-      borderRadius: "4px",
-      cursor: "pointer",
-    },
-    resetButton: {
-      backgroundColor: "#f44336",
-    },
-    statsTable: {
-      width: "100%",
-      borderCollapse: "collapse",
-      margin: "20px 0",
-    },
-    tableCell: {
-      border: "1px solid #ccc",
-      padding: "8px",
-      textAlign: "center",
-    },
-    responseArea: {
-      backgroundColor: "#fff",
-      padding: "10px",
-      borderRadius: "4px",
-      border: "1px solid #ccc",
-      minHeight: "100px",
-      marginTop: "10px",
-    },
-  };
+  // Summarizer functions start
+  const MAX_MODEL_CHARS = 4000;
+
+  useEffect(() => {
+    const onContentChange = async (newContent: string) => {
+      if (pageContent === newContent) return;
+      setPageContent(newContent);
+
+      let summaryText;
+      if (newContent) {
+        if (newContent.length > MAX_MODEL_CHARS) {
+          updateWarning(
+            `Text is too long for summarization with ${newContent.length} characters (maximum supported content length is ~4000 characters).`
+          );
+        } else {
+          updateWarning('');
+        }
+        showSummary('Loading...');
+        summaryText = await generateSummary(newContent);
+      } else {
+        summaryText = "There's nothing to summarize";
+      }
+      showSummary(summaryText);
+    };
+
+    const updateWarning = (warningText: string) => {
+      setWarning(warningText);
+    };
+
+    const showSummary = (summaryText: string) => {
+      setSummary(summaryText);
+    };
+
+    const generateSummary = async (text: string) => {
+      try {
+        const session = await createSummarizationSession();
+        const summary = await session.summarize(text);
+        session.destroy();
+        return summary;
+      } catch (e: any) {
+        return 'Error: ' + e.message;
+      }
+    };
+
+    const createSummarizationSession = async () => {
+      if (!window.ai || !window.ai.summarizer) {
+        throw new Error('AI Summarization is not supported in this browser');
+      }
+      const canSummarize = await window.ai.summarizer.capabilities();
+      if (canSummarize.available === 'no') {
+        throw new Error('AI Summarization is not available');
+      }
+
+      const summarizationSession = await window.ai.summarizer.create();
+      await summarizationSession.ready;
+
+      return summarizationSession;
+    };
+
+    // Example of using chrome.storage or any content change listener
+    chrome.storage.session.get('pageContent', ({ pageContent }) => {
+      onContentChange(pageContent);
+    });
+
+    chrome.storage.session.onChanged.addListener((changes) => {
+      const newContent = changes['pageContent']?.newValue;
+      onContentChange(newContent);
+    });
+  }, [pageContent]);
+
+  // Summarizer functions end
 
   return (
     <div style={styles.container}>
@@ -235,6 +313,12 @@ const App: React.FC = () => {
           Copy link
         </button>
       </div>
+      <h2>Summarizer</h2>
+      {warning && <div className="warning" style={{ color: 'red' }}>{warning}</div>}
+      <div id="summary-area" style={styles.responseArea}>
+        {summary}
+      </div>
+
     </div>
   );
 };

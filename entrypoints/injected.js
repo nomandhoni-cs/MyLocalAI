@@ -4,7 +4,6 @@ import { isProbablyReaderable, Readability } from '@mozilla/readability';
 export default defineUnlistedScript(() => {
   console.log('Script was injected!');
   
-  
   function canBeParsed(document) {
     return isProbablyReaderable(document, {
       minContentLength: 100
@@ -17,10 +16,9 @@ export default defineUnlistedScript(() => {
     }
     const documentClone = document.cloneNode(true);
     const article = new Readability(documentClone).parse();
-    console.log(article)
+    console.log(article.textContent)
     return article.textContent;
   }
-  
-  parse(window.document);
-  return 'Hello John!';
+  const result = parse(window.document);
+  return result;
 });
