@@ -1,0 +1,73 @@
+export const styles = {
+    container: {
+      fontFamily: "Arial, sans-serif",
+      padding: "20px",
+      backgroundColor: "#f0f4f8",
+      borderRadius: "8px",
+      boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
+      color: "#333",
+    },
+    label: {
+      display: "block",
+      marginBottom: "8px",
+      fontSize: "14px",
+      fontWeight: "bold",
+      color: "#555",
+    },
+    textarea: {
+      width: "100%",
+      padding: "10px",
+      fontSize: "14px",
+      borderRadius: "4px",
+      border: "1px solid #ccc",
+      marginBottom: "10px",
+      boxSizing: "border-box",
+    },
+    button: {
+      padding: "8px 16px",
+      fontSize: "14px",
+      margin: "5px",
+      backgroundColor: "#4CAF50",
+      color: "#fff",
+      border: "none",
+      borderRadius: "4px",
+      cursor: "pointer",
+    },
+    resetButton: {
+      backgroundColor: "#f44336",
+    },
+    statsTable: {
+      width: "100%",
+      borderCollapse: "collapse",
+      margin: "20px 0",
+    },
+    tableCell: {
+      border: "1px solid #ccc",
+      padding: "8px",
+      textAlign: "center",
+    },
+    responseArea: {
+      backgroundColor: "#fff",
+      padding: "10px",
+      borderRadius: "4px",
+      border: "1px solid #ccc",
+      minHeight: "100px",
+      marginTop: "10px",
+    },
+    summaryContainer: {
+      padding: "20px",
+      backgroundColor: "#f9f9f9",
+      borderRadius: "8px",
+      border: "1px solid #ddd",
+      margin: "20px 0",
+      color: "#333",
+    },
+    listItem: {
+      marginBottom: "10px",
+      fontSize: "16px",
+      lineHeight: "1.6",
+    },
+    boldText: {
+      fontWeight: "bold",
+    },
+  };
