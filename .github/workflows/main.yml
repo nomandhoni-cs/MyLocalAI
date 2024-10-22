@@ -53,12 +53,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Find and set Chrome zip file as output
+      - name: Set Chrome asset path
+        id: set_chrome_asset
+        run: echo "chrome_asset=$(ls ./.output/*-chrome.zip)" >> $GITHUB_ENV
+
+      # Find and set Firefox zip file as output
+      - name: Set Firefox asset path
+        id: set_firefox_asset
+        run: echo "firefox_asset=$(ls ./.output/*-firefox.zip)" >> $GITHUB_ENV
+
+      # Find and set Firefox sources zip file as output
+      - name: Set Firefox sources asset path
+        id: set_sources_asset
+        run: echo "sources_asset=$(ls ./.output/*-sources.zip)" >> $GITHUB_ENV
+
       # Upload Chrome extension zip
       - name: Upload Chrome zip to release
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/*-chrome.zip
+          asset_path: ${{ env.chrome_asset }}  # Use dynamic asset path
           asset_name: chrome-extension-v${{ github.run_number }}.zip
           asset_content_type: application/zip
 
@@ -67,7 +82,7 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/*-firefox.zip
+          asset_path: ${{ env.firefox_asset }}  # Use dynamic asset path
           asset_name: firefox-extension-v${{ github.run_number }}.zip
           asset_content_type: application/zip
 
@@ -76,6 +91,6 @@ jobs:
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/*-firefox-sources.zip  # Ensure you have the correct source zip file
+          asset_path: ${{ env.sources_asset }}  # Use dynamic asset path
           asset_name: firefox-sources-v${{ github.run_number }}.zip
           asset_content_type: application/zip
