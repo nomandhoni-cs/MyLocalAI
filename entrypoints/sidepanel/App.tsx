@@ -104,6 +104,7 @@ const App: React.FC = () => {
   };
   return (
     <div style={styles.container}>
+      <h1 className="text-6xl">Random</h1>
       <div id="error-message">{error}</div>
       <div id="prompt-area">
         <form onSubmit={handleSubmit}>
