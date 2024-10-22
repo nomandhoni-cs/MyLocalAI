@@ -30,6 +30,7 @@ function addStickyButton() {
   styleStickyButton(button);
 
   button.onclick = async function () {
+    createSummaryElement("Summarizing the text");
     const parsedData = parse(window.document);
     const textHaveToBeSummarized = parsedData?.textContent;
     if (textHaveToBeSummarized) {
@@ -234,9 +235,9 @@ export default defineContentScript({
   main() {
     const isReadable = canBeParsed(window.document)
     console.log(isReadable)
-    // if (isReadable ){
+    if (isReadable ){
       addStickyButton();
-    // }
+    } 
     document.addEventListener('focusin', onFocusIn);
 
     console.log('Content script initialized.');

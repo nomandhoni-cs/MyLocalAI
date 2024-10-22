@@ -2,16 +2,13 @@ import React, { useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
-const MAX_MODEL_CHARS = 10000;
-  const summaryOptions: {
-    type: AISummarizerType[],
-    length: AISummarizerLength[],
-    format: AISummarizerFormat[]
-  } = {
-    type: ["key-points", "tl;dr", "teaser", "headline"],
-    length: ["short", "medium", "long"],
-    format: ["markdown", "plain-text"]
-  };
+const MAX_MODEL_CHARS = 4000;
+const summaryOptions = {
+  type: ["key-points", "tl;dr", "teaser", "headline"],
+  length: ["short", "medium", "long"],
+  format: ["markdown", "plain-text"],
+};
+
 const Summarizer = () => {
   const [pageContent, setPageContent] = useState('');
   const [summary, setSummary] = useState('');
