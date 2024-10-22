@@ -3,6 +3,7 @@ import DOMPurify from "dompurify";
 export default defineContentScript({
   matches: ["https://*/*"],
   main() {
+    addStickyButton();
     let btnContainer = createButtonContainer();
     document.addEventListener('focusin', onFocusIn);
 
@@ -118,7 +119,61 @@ export default defineContentScript({
     }
 
     console.log('Content script initialized.');
+    // Sticky Button functionality
+    function addStickyButton() {
+      // Create the sticky button
+      const stickyButton = document.createElement('button');
+    
+      // Set an image as the button content (use your own image URL or data URI)
+      const img = document.createElement('img');
+      img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAHESURBVHgBjVNNMgNREO5vxE+VhbmBbP1VcQJxgziA5NkwVuIE4QSRlbCacAC5QY5glGCZcYNYKKu89vUwaihEL+Z1Xnd/+frrfpBv1hi68PVFr1V0HSIjnu2L1atT+cWC7xcsboloJVDpiiKBoBXducpvALBPlgCtm+9Fq4Gg11nt7robF85M+yGTUgIlSkaYQruzFKefDKL7WlPh+16kqpAKgJEX3Fow3ohHBEsECC1GZg0d+3706Mo5QElVHKn2Lta62z9RJJOt3LdCP/Y3MvYNkyvXoAzRW/mHGXWAbQgWPluwjwKbRVqTjO2s58KyRaSmOnsbHjy46qRiKFK2XTbd9gY7jWwKpvbstPbpjs4LPf9l0aDet13JWjC1RSXlmEL5pzE35RGWorvaMTVY5FWVdNqTCt9pB5bvKGZcoiBNWxBu3kln7fJ4EgD35JAahBQvnpvHUckuA9V2sXiPy0V0JwYMnJwtx70iCPvONvXD/2r7g3oLKgaWsNHQe39dfAv27xTvOf+dMcj2gFqYz7fgjF5nJX8LOuTsmoxXLI/ZIRAkXwCyPch2/eN1qT7ZYdPZv69xQu9x04rBo/OVOM4B3gCn4dLeryIYgQAAAABJRU5ErkJggg=='; // Replace with your image path
+      img.alt = 'Summarize';
+      img.style.width = '24px';
+      img.style.height = '24px';
+      stickyButton.appendChild(img);
+    
+      // Make the button round and position it fixed at the bottom-right
+      stickyButton.style.position = 'fixed';
+      stickyButton.style.bottom = '20px';
+      stickyButton.style.right = '20px';
+      stickyButton.style.width = '40px';
+      stickyButton.style.height = '40px';
+      stickyButton.style.borderRadius = '50%';
+      stickyButton.style.border = 'none';
+      stickyButton.style.cursor = 'pointer';
+      stickyButton.style.display = 'flex';
+      stickyButton.style.alignItems = 'center';
+      stickyButton.style.justifyContent = 'center';
+      stickyButton.style.zIndex = '9999'; // Ensure it's above other elements
+    
+      // Add click event for the sticky button
+      stickyButton.onclick = function () {
+        alert('Sticky button clicked!');
+      };
+    
+      // Append the sticky button to the body
+      document.body.appendChild(stickyButton);
+    
+      // Change the button's background color based on article readability
+      updateButtonBackground(stickyButton);
+    }
+    
+    // Function to update the background color based on article readability
+    function updateButtonBackground(button) {
+      // This assumes you have `injected.js` to check if the article is readable
+      import('@mozilla/readability').then(({ isProbablyReaderable }) => {
+        const isReadable = isProbablyReaderable(document, { minContentLength: 100 });
+        if (isReadable) {
+          button.style.backgroundColor = 'green'; // Set background to green if readable
+        } else {
+          button.style.backgroundColor = 'white'; // Set background to white if not readable
+        }
+      });
+    }
+    
+    
   },
+  
 });
 
 
