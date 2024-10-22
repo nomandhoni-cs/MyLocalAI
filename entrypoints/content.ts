@@ -1,6 +1,7 @@
 import DOMPurify from "dompurify";
 import { isProbablyReaderable, Readability } from '@mozilla/readability';
 
+let isSummaryDisplayed = false
 const summaryOptions = {
   type: ["key-points", "tl;dr", "teaser", "headline"] as AISummarizerType[],
   length: ["short", "medium", "long"] as AISummarizerLength[],
@@ -33,34 +34,44 @@ function addStickyButton() {
     const textHaveToBeSummarized = parsedData?.textContent;
     if (textHaveToBeSummarized) {
       const summary = await summarizeText(textHaveToBeSummarized);
-      createSummaryElement(summary);
+      if(isSummaryDisplayed){
+        const summaryDiv = document.querySelector('#summarized_text_div');
+        summaryDiv.remove();
+        isSummaryDisplayed = !isSummaryDisplayed
+      }
+      else{
+        createSummaryElement(summary);
+        isSummaryDisplayed = !isSummaryDisplayed
+      }
     } else {
       alert("This page cannot be summarized.");
     }
   };
-
+  
   document.body.appendChild(button);
 }
 
 // Create the summary element
 function createSummaryElement(summary: string) {
   const summaryDiv = document.createElement('div');
+  summaryDiv.setAttribute("id","summarized_text_div")
   summaryDiv.innerHTML = `
-    <div style="position: fixed; bottom: 8%; right: 5%; width: 300px; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); z-index: 1000;">
-      <div style="position: relative;">
-        <button id="close-summary" style="position: absolute; top: 0; right: 0; background: none; border: none; font-size: 16px; cursor: pointer;">✕</button>
-        <h3>Summary</h3>
-        <p>${summary}</p>
-      </div>
-    </div>
+  <div style="position: fixed; bottom: 8%; right: 5%; width: 300px; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); z-index: 1000;">
+  <div style="position: relative;">
+  <button id="close-summary" style="position: absolute; top: 0; right: 0; background: none; border: none; font-size: 16px; cursor: pointer;">✕</button>
+  <h3>Summary</h3>
+  <p>${summary}</p>
+  </div>
+  </div>
   `;
 
   document.body.appendChild(summaryDiv);
-
+  
   // Close button functionality
   const closeButton = summaryDiv.querySelector('#close-summary');
   closeButton?.addEventListener('click', () => {
     summaryDiv.remove();
+    isSummaryDisplayed = !isSummaryDisplayed
   });
 }
 
