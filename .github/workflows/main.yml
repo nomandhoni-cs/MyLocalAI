@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to release'
+        required: true
+        default: 'main'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the repository
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}  # Ensure you are releasing the correct branch
+
+      # Setup Node and pnpm
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: pnpm install
+
+      # Build and zip the extensions
+      - name: Zip extensions
+        run: |
+          pnpm zip
+          pnpm zip:firefox
+
+      # Create a release and upload zipped files to GitHub releases
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: "v${{ github.run_number }}"   # Use a dynamic tag name like a version number or timestamp
+          release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
+          draft: false
+          prerelease: false
+
+      # Upload Chrome extension zip
+      - name: Upload Chrome zip to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./.output/*-chrome.zip
+          asset_name: chrome-extension-v${{ github.run_number }}.zip
+          asset_content_type: application/zip
+
