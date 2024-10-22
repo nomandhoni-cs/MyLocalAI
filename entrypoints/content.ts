@@ -1,5 +1,6 @@
 import DOMPurify from "dompurify";
 import { isProbablyReaderable, Readability } from '@mozilla/readability';
+import { marked } from "marked";
 
 let isSummaryDisplayed = false;
 const summaryOptions = {
@@ -59,9 +60,9 @@ function createSummaryElement(summary: string) {
   const summaryDiv = document.createElement('div');
   summaryDiv.setAttribute("id", "summarized_text_div");
   summaryDiv.innerHTML = `
-    <div style="position: fixed; bottom: 8%; right: 5%; width: 300px; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); z-index: 1000;">
+    <div style="position: fixed; bottom: 8%; right: 5%; width: 300px; max-height: 550px; overflow-y: auto; padding: 20px; background-color: white; border-radius: 10px; box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); z-index: 1000;">
       <div style="position: relative;">
-        <button id="close-summary" style="position: absolute; top: 0; right: 0; background: none; border: none; font-size: 16px; cursor: pointer;">✕</button>
+        <button id="close-summary" style="position: absolute; top: 0; right: 0; background: none; border: none; font-size: 16px; cursor: pointer; color: black">✕</button>
         <h3 style="color: black">Summary</h3>
         <p style="color: black">${summary}</p>
       </div>
@@ -88,12 +89,14 @@ function removeSummaryElement() {
 }
 
 // Update summary element with the actual summary
-function updateSummaryElement(summary: string) {
+function updateSummaryElement(markdownSummary: string) {
   const summaryDiv = document.querySelector('#summarized_text_div');
   if (summaryDiv) {
     const summaryParagraph = summaryDiv.querySelector('p');
     if (summaryParagraph) {
-      summaryParagraph.innerHTML = summary; // Update the paragraph with the actual summary
+      // Convert markdown to HTML and sanitize
+      const htmlSummary = DOMPurify.sanitize(marked(markdownSummary));
+      summaryParagraph.innerHTML = htmlSummary; // Update the paragraph with the sanitized HTML summary
     }
   }
 }
