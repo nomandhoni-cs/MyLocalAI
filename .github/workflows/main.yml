@@ -41,15 +41,6 @@ jobs:
       - name: List output directory
         run: ls -la ./.output/
 
-      # Find and set Chrome asset path dynamically
-      - name: Set Chrome asset path
-        id: set_chrome_asset
-        run: echo "chrome_asset=$(ls ./.output/*-chrome.zip)" >> $GITHUB_ENV
-
-      # Debug the Chrome asset path
-      - name: Debug Chrome asset path
-        run: echo "Chrome asset path: ${{ env.chrome_asset }}"
-
       # Create GitHub Release
       - name: Create GitHub Release
         id: create_release
@@ -62,35 +53,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Pass the token here
 
-      # Upload Chrome extension zip
-      - name: Upload Chrome zip to release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.chrome_asset }}  # Use dynamic asset path
-          asset_name: $(basename ${{ env.chrome_asset }})  # Use the basename of the asset path
-          asset_content_type: application/zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure the token is set
-
-      # Upload Firefox extension zip
-      - name: Upload Firefox zip to release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/*-firefox.zip
-          asset_name: firefox-extension-v${{ github.run_number }}.zip
-          asset_content_type: application/zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure the token is set
-
-      # Upload Firefox sources zip
-      - name: Upload Firefox sources zip to release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/*-sources.zip
-          asset_name: firefox-sources-v${{ github.run_number }}.zip
-          asset_content_type: application/zip
+      # Upload all ZIP files in the output directory
+      - name: Upload ZIP files to release
+        run: |
+          for zip in ./.output/*.zip; do
+            echo "Uploading $zip"
+            gh release upload "${{ steps.create_release.outputs.tag_name }}" "$zip" --clobber
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure the token is set
