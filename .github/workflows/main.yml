@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 'latest'  # Use the latest stable version of Node.js
+          node-version: '20'  # Use the latest stable version of Node.js
           cache: 'pnpm'
 
       # Install dependencies
@@ -37,17 +37,21 @@ jobs:
           pnpm zip
           pnpm zip:firefox
 
+      # List output directory for debugging
+      - name: List output directory
+        run: ls -la ./.output/
+
       # Create GitHub Release
       - name: Create GitHub Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@v1.2.0  # Update to the latest version
         with:
-          tag_name: "v${{ github.run_number }}-${{ github.sha }}"  # Include commit SHA for uniqueness
+          tag_name: "v${{ github.run_number }}-${{ github.sha }}"  # Unique tag
           release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use GitHub's automatically provided token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Upload Chrome extension zip
       - name: Upload Chrome zip to release
