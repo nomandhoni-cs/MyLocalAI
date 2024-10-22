@@ -76,6 +76,7 @@ const styles = {
   },
 };
 const App: React.FC = () => {
+  const [isCopied, setIsCopied] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState("");
   const [session, setSession] = useState<any>(null);
@@ -201,7 +202,7 @@ const App: React.FC = () => {
       } else {
         summaryText = "There's nothing to summarize";
       }
-      console.log(summaryText)
+      console.log(summaryText);
       showSummary(summaryText);
     };
 
@@ -218,7 +219,7 @@ const App: React.FC = () => {
       try {
         const session = await createSummarizationSession();
         const summary = await session.summarize(text);
-        session.destroy();
+        session.destroy(); // Destroying the session after use
         return summary;
       } catch (e: any) {
         return 'Error: ' + e.message;
@@ -229,18 +230,27 @@ const App: React.FC = () => {
       if (!window.ai || !window.ai.summarizer) {
         throw new Error('AI Summarization is not supported in this browser');
       }
+
       const canSummarize = await window.ai.summarizer.capabilities();
       if (canSummarize.available === 'no') {
         throw new Error('AI Summarization is not available');
       }
 
       const summarizationSession = await window.ai.summarizer.create({
-        type: summaryOptions.type[0],   // Should be one of the types: 'key-points', 'tl;dr', 'teaser', 'headline'
-        format: summaryOptions.format[0],  // Should be 'markdown' or 'plain-text'
-        length: summaryOptions.length[1]    // Should be 'short', 'medium', or 'long'
+        type: summaryOptions.type[0],   // 'key-points'
+        format: summaryOptions.format[0],  // 'markdown'
+        length: summaryOptions.length[1]    // 'medium'
       } as AISummarizerCreateOptions);
-      await summarizationSession.ready;
-      console.log(summarizationSession)
+
+      if (canSummarize.available === 'after-download') {
+        summarizationSession.addEventListener('downloadprogress', (progress) => {
+          console.log(`Model download progress: ${progress.loaded / progress.total * 100}%`);
+        });
+        await summarizationSession.ready; // Wait for the model to be ready if it needs downloading
+        console.log(summarizationSession)
+
+      }
+
       return summarizationSession;
     };
 
@@ -253,11 +263,15 @@ const App: React.FC = () => {
       const newContent = changes['pageContent']?.newValue;
       onContentChange(newContent);
     });
-    console.log(pageContent)
+    console.log(pageContent);
   }, [pageContent]);
 
   // Summarizer functions end
-
+  const handleCopy = () => {
+    navigator.clipboard.writeText(rawResponse);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+  };
   return (
     <div style={styles.container}>
       <div id="error-message">{error}</div>
@@ -341,8 +355,8 @@ const App: React.FC = () => {
           <summary>Raw response</summary>
           <div>{rawResponse}</div>
         </details>
-        <button id="copy-link-button" style={styles.button}>
-          Copy link
+        <button onClick={handleCopy} id="copy-link-button" style={styles.button}>
+        {isCopied ? 'Copied!' : 'Copy'}
         </button>
       </div>
       <h2>Summarizer</h2>
