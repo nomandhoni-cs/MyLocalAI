@@ -2,49 +2,76 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to release'
+        required: true
+        default: 'main'
 
 jobs:
-  submit:
+  release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # This allows GITHUB_TOKEN to create a release
     steps:
+      # Checkout the repository
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}  # Ensure you are releasing the correct branch
 
+      # Setup Node and pnpm (specify pnpm version)
       - uses: pnpm/action-setup@v4
         with:
-          version: 'latest'
+          version: 'latest'  # Use the latest version of pnpm
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 'latest'  # Use the latest stable version of Node.js
           cache: 'pnpm'
 
+      # Install dependencies
       - name: Install dependencies
         run: pnpm install
 
+      # Build and zip the extensions
       - name: Zip extensions
         run: |
           pnpm zip
           pnpm zip:firefox
 
-      - name: Create Release
+      # Create GitHub Release
+      - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v3
-          release_name: Release 3 for main
+          tag_name: "v${{ github.run_number }}-${{ github.sha }}"  # Include commit SHA for uniqueness
+          release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
           draft: false
           prerelease: false
-
-      # Upload all zip files in the .output directory
-      - name: Upload all ZIP files
-        run: |
-          for file in ./.output/*.zip; do
-            echo "Uploading $file"
-            gh release upload ${{ steps.create_release.outputs.tag_name }} "$file" --clobber
-          done
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use GitHub's automatically provided token
+
+      # Upload Chrome extension zip
+      - name: Upload Chrome zip to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./.output/*-chrome.zip
+          asset_name: chrome-extension-v${{ github.run_number }}.zip
+          asset_content_type: application/zip
+
+      # Upload Firefox extension zip
+      - name: Upload Firefox zip to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./.output/*-firefox.zip
+          asset_name: firefox-extension-v${{ github.run_number }}.zip
+          asset_content_type: application/zip
+
+      # Upload Firefox sources zip
+      - name: Upload Firefox sources zip to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./.output/*-firefox-sources.zip  # Ensure you have the correct source zip file
+          asset_name: firefox-sources-v${{ github.run_number }}.zip
+          asset_content_type: application/zip
