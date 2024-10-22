@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'  # Use the latest stable version of Node.js
+          node-version: 'latest'  # Use the latest stable version of Node.js
           cache: 'pnpm'
 
       # Install dependencies
@@ -41,56 +41,39 @@ jobs:
       - name: List output directory
         run: ls -la ./.output/
 
-      # Create GitHub Release
+            # Create a release and upload zipped files to GitHub releases
       - name: Create GitHub Release
         id: create_release
-        uses: actions/create-release@latest  # Update to the latest version
+        uses: actions/create-release@latest
         with:
-          tag_name: "v${{ github.run_number }}-${{ github.sha }}"  # Unique tag
+          tag_name: "v${{ github.run_number }}"   # Use a dynamic tag name like a version number or timestamp
           release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Find and set Chrome zip file as output
-      - name: Set Chrome asset path
-        id: set_chrome_asset
-        run: echo "chrome_asset=$(ls ./.output/*-chrome.zip)" >> $GITHUB_ENV
-
-      # Find and set Firefox zip file as output
-      - name: Set Firefox asset path
-        id: set_firefox_asset
-        run: echo "firefox_asset=$(ls ./.output/*-firefox.zip)" >> $GITHUB_ENV
-
-      # Find and set Firefox sources zip file as output
-      - name: Set Firefox sources asset path
-        id: set_sources_asset
-        run: echo "sources_asset=$(ls ./.output/*-sources.zip)" >> $GITHUB_ENV
 
       # Upload Chrome extension zip
       - name: Upload Chrome zip to release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@latest
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.chrome_asset }}  # Use dynamic asset path
+          asset_path: ./.output/*-chrome.zip
           asset_name: chrome-extension-v${{ github.run_number }}.zip
           asset_content_type: application/zip
 
       # Upload Firefox extension zip
       - name: Upload Firefox zip to release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@latest
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.firefox_asset }}  # Use dynamic asset path
+          asset_path: ./.output/*-firefox.zip
           asset_name: firefox-extension-v${{ github.run_number }}.zip
           asset_content_type: application/zip
 
       # Upload Firefox sources zip
       - name: Upload Firefox sources zip to release
-        uses: actions/upload-release-asset@v1
+        uses: actions/upload-release-asset@latest
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.sources_asset }}  # Use dynamic asset path
+          asset_path: ./.output/*-sources.zip
           asset_name: firefox-sources-v${{ github.run_number }}.zip
           asset_content_type: application/zip

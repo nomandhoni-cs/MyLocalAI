@@ -1,8 +1,8 @@
 {
-  "name": "mylocal_ai",
+  "name": "mylocal-ai",
   "description": "manifest.json description",
   "private": true,
-  "version": "1.0.0--alpha",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
