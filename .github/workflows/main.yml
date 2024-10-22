@@ -50,6 +50,8 @@ jobs:
           release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Pass the GITHUB_TOKEN here
 
       # Upload Chrome extension zip
       - name: Upload Chrome zip to release
