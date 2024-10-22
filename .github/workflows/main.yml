@@ -60,15 +60,37 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Pass the token here
 
       # Upload Chrome extension zip
       - name: Upload Chrome zip to release
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.chrome_asset }}
+          asset_path: ${{ env.chrome_asset }}  # Use dynamic asset path
           asset_name: chrome-extension-v${{ github.run_number }}.zip
+          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure the token is set
+
+      # Upload Firefox extension zip
+      - name: Upload Firefox zip to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./.output/*-firefox.zip
+          asset_name: firefox-extension-v${{ github.run_number }}.zip
+          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure the token is set
+
+      # Upload Firefox sources zip
+      - name: Upload Firefox sources zip to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./.output/*-sources.zip
+          asset_name: firefox-sources-v${{ github.run_number }}.zip
           asset_content_type: application/zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure the token is set
