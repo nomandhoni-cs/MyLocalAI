@@ -53,12 +53,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Pass the token here
 
+      # Install GitHub CLI
+      - name: Install GitHub CLI
+        run: sudo apt-get install -y gh
+
       # Upload all ZIP files in the output directory
       - name: Upload ZIP files to release
         run: |
           for zip in ./.output/*.zip; do
             echo "Uploading $zip"
-            gh release upload "${{ steps.create_release.outputs.tag_name }}" "$zip" --clobber
+            gh release upload "v${{ github.run_number }}" "$zip" --clobber
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure the token is set
