@@ -16,7 +16,7 @@ export default defineUnlistedScript(() => {
     }
     const documentClone = document.cloneNode(true);
     const article = new Readability(documentClone).parse();
-    console.log(article.textContent) 
+    // console.log(article.textContent) 
     return article.textContent;
   }
   const result = parse(window.document);

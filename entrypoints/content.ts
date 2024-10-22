@@ -1,4 +1,5 @@
 import DOMPurify from "dompurify";
+import { isProbablyReaderable, Readability } from '@mozilla/readability';
 
 export default defineContentScript({
   matches: ["https://*/*"],
@@ -149,6 +150,7 @@ export default defineContentScript({
       // Add click event for the sticky button
       stickyButton.onclick = function () {
         alert('Sticky button clicked!');
+
       };
     
       // Append the sticky button to the body
@@ -163,14 +165,21 @@ export default defineContentScript({
       // This assumes you have `injected.js` to check if the article is readable
       import('@mozilla/readability').then(({ isProbablyReaderable }) => {
         const isReadable = isProbablyReaderable(document, { minContentLength: 100 });
+        function parse(document) {
+          const documentClone = document.cloneNode(true);
+          const article = new Readability(documentClone).parse();
+          // console.log(article.textContent) 
+          return article.textContent;
+        }
         if (isReadable) {
+          const result = parse(window.document);
+          console.log("is Readable",result)
           button.style.backgroundColor = 'green'; // Set background to green if readable
         } else {
           button.style.backgroundColor = 'white'; // Set background to white if not readable
         }
       });
     }
-    
     
   },
   

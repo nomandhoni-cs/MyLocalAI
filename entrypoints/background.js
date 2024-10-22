@@ -1,14 +1,14 @@
 export default defineBackground(() => {
-  // chrome.sidePanel
-  //   .setPanelBehavior({ openPanelOnActionClick: true })
-  //   .catch((error) => console.error(error));
+  chrome.sidePanel
+    .setPanelBehavior({ openPanelOnActionClick: true })
+    .catch((error) => console.error(error));
 
-  // chrome.tabs.onActivated.addListener((activeInfo) => {
-  //   showSummary(activeInfo.tabId);
-  // });
-  // chrome.tabs.onUpdated.addListener(async (tabId) => {
-  //   showSummary(tabId);
-  // });
+  chrome.tabs.onActivated.addListener((activeInfo) => {
+    showSummary(activeInfo.tabId);
+  });
+  chrome.tabs.onUpdated.addListener(async (tabId) => {
+    showSummary(tabId);
+  });
 
   async function showSummary(tabId) {
     const tab = await chrome.tabs.get(tabId);
