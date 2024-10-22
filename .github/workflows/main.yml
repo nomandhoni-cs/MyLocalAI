@@ -41,7 +41,9 @@ jobs:
       - name: List output directory
         run: ls -la ./.output/
 
-            # Create a release and upload zipped files to GitHub releases
+
+
+     # Create a release and upload zipped files to GitHub releases
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@latest
@@ -50,17 +52,21 @@ jobs:
           release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Pass the GITHUB_TOKEN here
+
+      # Find and set Chrome asset path dynamically
+      - name: Set Chrome asset path
+        id: set_chrome_asset
+        run: echo "chrome_asset=$(ls ./.output/*-chrome.zip)" >> $GITHUB_ENV
 
       # Upload Chrome extension zip
       - name: Upload Chrome zip to release
         uses: actions/upload-release-asset@latest
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/*-chrome.zip
+          asset_path: ${{ env.chrome_asset }}  # Use dynamic asset path
           asset_name: chrome-extension-v${{ github.run_number }}.zip
           asset_content_type: application/zip
+
 
       # Upload Firefox extension zip
       - name: Upload Firefox zip to release
