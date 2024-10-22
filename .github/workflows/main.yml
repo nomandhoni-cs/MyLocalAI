@@ -37,15 +37,16 @@ jobs:
           pnpm zip
           pnpm zip:firefox
 
-      # Create a release and upload zipped files to GitHub releases
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
         with:
-          tag_name: "v${{ github.run_number }}"   # Use a dynamic tag name like a version number or timestamp
+          tag_name: "v${{ github.run_number }}"  # Dynamic tag, can be customized
           release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use GitHub's automatically provided token
 
       # Upload Chrome extension zip
       - name: Upload Chrome zip to release
@@ -55,3 +56,18 @@ jobs:
           asset_path: ./.output/*-chrome.zip
           asset_name: chrome-extension-v${{ github.run_number }}.zip
           asset_content_type: application/zip
+
+      # Upload Firefox extension zip
+      - name: Upload Firefox zip to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./.output/*-firefox.zip
+          asset_name: firefox-extension-v${{ github.run_number }}.zip
+          asset_content_type: application/zip
+
+      # Upload Firefox sources zip
+      - name: Upload Firefox sources zip to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: 
