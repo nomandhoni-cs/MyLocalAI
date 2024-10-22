@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { styles } from "./styles";
+import Summarizer from "./components/Summarizer";
 
 
 const App: React.FC = () => {
@@ -19,12 +20,6 @@ const App: React.FC = () => {
   const [cost, setCost] = useState(0);
   const [error, setError] = useState("");
   const [rawResponse, setRawResponse] = useState("");
-
-  // Summarizer States 
-  const [pageContent, setPageContent] = useState("");
-  const [summary, setSummary] = useState("");
-  const [warning, setWarning] = useState("");
-  //  Summarizer states end 
 
 
   const sessionTopKRef = useRef<HTMLInputElement>(null);
@@ -100,102 +95,8 @@ const App: React.FC = () => {
     }
   }, [session]);
 
-  // Summarizer functions start
-  const MAX_MODEL_CHARS = 4000;
-  const summaryOptions: {
-    type: AISummarizerType[],
-    length: AISummarizerLength[],
-    format: AISummarizerFormat[]
-  } = {
-    type: ["key-points", "tl;dr", "teaser", "headline"],
-    length: ["short", "medium", "long"],
-    format: ["markdown", "plain-text"]
-  };
 
-  useEffect(() => {
-    const onContentChange = async (newContent: string) => {
-      if (pageContent === newContent) return;
-      setPageContent(newContent);
-
-      let summaryText;
-      if (newContent) {
-        if (newContent.length > MAX_MODEL_CHARS) {
-          updateWarning(
-            `Text is too long for summarization with ${newContent.length} characters (maximum supported content length is ~4000 characters).`
-          );
-        } else {
-          updateWarning('');
-        }
-        showSummary('Loading...');
-        summaryText = await generateSummary(newContent);
-      } else {
-        summaryText = "There's nothing to summarize";
-      }
-      console.log(summaryText);
-      showSummary(summaryText);
-    };
-
-    const updateWarning = (warningText: string) => {
-      setWarning(warningText);
-    };
-
-    const showSummary = (summaryText: string) => {
-      const sanitizedSummary = DOMPurify.sanitize(marked.parse(summaryText));
-      setSummary(sanitizedSummary);
-    };
-
-    const generateSummary = async (text: string) => {
-      try {
-        const session = await createSummarizationSession();
-        const summary = await session.summarize(text);
-        session.destroy(); // Destroying the session after use
-        return summary;
-      } catch (e: any) {
-        return 'Error: ' + e.message;
-      }
-    };
-
-    const createSummarizationSession = async () => {
-      if (!window.ai || !window.ai.summarizer) {
-        throw new Error('AI Summarization is not supported in this browser');
-      }
-
-      const canSummarize = await window.ai.summarizer.capabilities();
-      if (canSummarize.available === 'no') {
-        throw new Error('AI Summarization is not available');
-      }
-
-      const summarizationSession = await window.ai.summarizer.create({
-        type: summaryOptions.type[0],   // 'key-points'
-        format: summaryOptions.format[0],  // 'markdown'
-        length: summaryOptions.length[1]    // 'medium'
-      } as AISummarizerCreateOptions);
-
-      if (canSummarize.available === 'after-download') {
-        summarizationSession.addEventListener('downloadprogress', (progress) => {
-          console.log(`Model download progress: ${progress.loaded / progress.total * 100}%`);
-        });
-        await summarizationSession.ready; // Wait for the model to be ready if it needs downloading
-        console.log(summarizationSession)
-
-      }
-
-      return summarizationSession;
-    };
-
-    // Example of using chrome.storage or any content change listener
-    chrome.storage.session.get('pageContent', ({ pageContent }) => {
-      onContentChange(pageContent);
-    });
-
-    chrome.storage.session.onChanged.addListener((changes) => {
-      const newContent = changes['pageContent']?.newValue;
-      onContentChange(newContent);
-    });
-    console.log(pageContent);
-  }, [pageContent]);
-
-  // Summarizer functions end
+  // // Summarizer functions end
   const handleCopy = () => {
     navigator.clipboard.writeText(rawResponse);
     setIsCopied(true);
@@ -285,15 +186,10 @@ const App: React.FC = () => {
           <div>{rawResponse}</div>
         </details>
         <button onClick={handleCopy} id="copy-link-button" style={styles.button}>
-        {isCopied ? 'Copied!' : 'Copy'}
+          {isCopied ? 'Copied!' : 'Copy'}
         </button>
       </div>
-      <h2>Summarizer</h2>
-      {warning && <div className="warning" style={{ color: 'red' }}>{warning}</div>}
-      <div
-        style={styles.summaryContainer}
-        dangerouslySetInnerHTML={{ __html: summary }}
-      />
+      <Summarizer />
 
     </div>
   );

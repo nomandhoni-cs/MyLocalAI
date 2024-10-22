@@ -234,9 +234,9 @@ export default defineContentScript({
   main() {
     const isReadable = canBeParsed(window.document)
     console.log(isReadable)
-    if (isReadable ){
+    // if (isReadable ){
       addStickyButton();
-    }
+    // }
     document.addEventListener('focusin', onFocusIn);
 
     console.log('Content script initialized.');
