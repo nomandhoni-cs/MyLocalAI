@@ -39,22 +39,12 @@ jobs:
           draft: false
           prerelease: false
 
-      - name: Upload Chrome Zip
-        uses: actions/upload-release-asset@v1
+      # Upload all zip files in the .output directory
+      - name: Upload all ZIP files
+        run: |
+          for file in ./.output/*.zip; do
+            echo "Uploading $file"
+            gh release upload ${{ steps.create_release.outputs.tag_name }} "$file" --clobber
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/*-chrome.zip
-          asset_name: chrome-extension-v3.zip
-          asset_content_type: application/zip
-
-      - name: Upload Firefox Zip
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/*-firefox.zip
-          asset_name: firefox-extension-v3.zip
-          asset_content_type: application/zip
