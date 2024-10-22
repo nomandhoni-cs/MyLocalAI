@@ -171,7 +171,16 @@ const App: React.FC = () => {
   }, [session]);
 
   // Summarizer functions start
-  const MAX_MODEL_CHARS = 400000;
+  const MAX_MODEL_CHARS = 4000;
+  const summaryOptions: {
+    type: AISummarizerType[],
+    length: AISummarizerLength[],
+    format: AISummarizerFormat[]
+  } = {
+    type: ["key-points", "tl;dr", "teaser", "headline"],
+    length: ["short", "medium", "long"],
+    format: ["markdown", "plain-text"]
+  };
 
   useEffect(() => {
     const onContentChange = async (newContent: string) => {
@@ -225,9 +234,13 @@ const App: React.FC = () => {
         throw new Error('AI Summarization is not available');
       }
 
-      const summarizationSession = await window.ai.summarizer.create();
+      const summarizationSession = await window.ai.summarizer.create({
+        type: summaryOptions.type[0],   // Should be one of the types: 'key-points', 'tl;dr', 'teaser', 'headline'
+        format: summaryOptions.format[0],  // Should be 'markdown' or 'plain-text'
+        length: summaryOptions.length[1]    // Should be 'short', 'medium', or 'long'
+      } as AISummarizerCreateOptions);
       await summarizationSession.ready;
-console.log(summarizationSession)
+      console.log(summarizationSession)
       return summarizationSession;
     };
 
@@ -240,6 +253,7 @@ console.log(summarizationSession)
       const newContent = changes['pageContent']?.newValue;
       onContentChange(newContent);
     });
+    console.log(pageContent)
   }, [pageContent]);
 
   // Summarizer functions end
