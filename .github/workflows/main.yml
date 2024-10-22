@@ -44,7 +44,7 @@ jobs:
       # Create GitHub Release
       - name: Create GitHub Release
         id: create_release
-        uses: actions/create-release@v1.2.0  # Update to the latest version
+        uses: actions/create-release@latest  # Update to the latest version
         with:
           tag_name: "v${{ github.run_number }}-${{ github.sha }}"  # Unique tag
           release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
