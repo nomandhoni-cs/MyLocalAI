@@ -51,7 +51,7 @@ jobs:
         with:
           tag_name: "v${{ github.run_number }}"
           release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
-          draft: false
+          draft: true
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Pass the token here
