@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
-import { styles } from "./styles";
 import Summarizer from "./components/Summarizer";
-
+import { SunIcon, SettingsIcon, CopyIcon, RefreshCcwIcon } from "lucide-react";
 
 const App: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
@@ -17,10 +16,10 @@ const App: React.FC = () => {
     tokensSoFar: 0,
     topK: 0,
   });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [cost, setCost] = useState(0);
   const [error, setError] = useState("");
   const [rawResponse, setRawResponse] = useState("");
-
 
   const sessionTopKRef = useRef<HTMLInputElement>(null);
   const sessionTemperatureRef = useRef<HTMLInputElement>(null);
@@ -29,14 +28,18 @@ const App: React.FC = () => {
   const updateSession = async () => {
     const temperature = Number(sessionTemperatureRef.current?.value || 0);
     const topK = Number(sessionTopKRef.current?.value || 0);
-    const newSession = await self.ai.languageModel.create({ temperature, topK });
+    const newSession = await self.ai.languageModel.create({
+      temperature,
+      topK,
+    });
     setSession(newSession);
     updateStats(newSession);
   };
 
   const updateStats = (newSession: any) => {
     if (!newSession) return;
-    const { maxTokens, temperature, tokensLeft, tokensSoFar, topK } = newSession;
+    const { maxTokens, temperature, tokensLeft, tokensSoFar, topK } =
+      newSession;
     setStats({ maxTokens, temperature, tokensLeft, tokensSoFar, topK });
   };
 
@@ -74,7 +77,9 @@ const App: React.FC = () => {
       const stream = await session.promptStreaming(promptText);
       for await (const chunk of stream) {
         fullResponse = chunk.trim();
-        const sanitizedResponse = DOMPurify.sanitize(marked.parse(fullResponse));
+        const sanitizedResponse = DOMPurify.sanitize(
+          marked.parse(fullResponse)
+        );
         setResponse(sanitizedResponse);
         setRawResponse(fullResponse);
       }
@@ -95,7 +100,6 @@ const App: React.FC = () => {
     }
   }, [session]);
 
-
   // // Summarizer functions end
   const handleCopy = () => {
     navigator.clipboard.writeText(rawResponse);
@@ -103,95 +107,107 @@ const App: React.FC = () => {
     setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
   };
   return (
-    <div style={styles.container}>
-      <h1 className="text-6xl text-green-400">Random</h1>
-      <div id="error-message">{error}</div>
-      <div id="prompt-area">
-        <form onSubmit={handleSubmit}>
-          <label style={styles.label}>Prompt</label>
+    <div className="max-w-3xl mx-auto p-6 space-y-6 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-md">
+      <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100">
+        MyLocal AI
+      </h1>
+
+      {error && <div className="text-red-500">{error}</div>}
+
+      <Summarizer />
+
+      {/* Chat Interface */}
+      <div className="space-y-6">
+        {/* Prompt Area */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <textarea
             id="prompt-input"
             value={prompt}
             onChange={handleInputChange}
-            style={styles.textarea}
+            placeholder="Type your prompt here..."
+            className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
           />
-          <button type="submit" id="submit-button" style={styles.button}>
-            Submit prompt
-          </button>
-          <button
-            type="button"
-            id="reset-button"
-            onClick={resetUI}
-            style={{ ...styles.button, ...styles.resetButton }}
-          >
-            Reset session
-          </button>
-          <span id="cost">{cost} tokens</span>
-          <div className="settings">
-            <label htmlFor="session-top-k" style={styles.label}>
-              Top-k
-            </label>
-            <input id="session-top-k" min={1} type="number" ref={sessionTopKRef} />
-            <label htmlFor="session-temperature" style={styles.label}>
-              Temperature
-            </label>
-            <input
-              id="session-temperature"
-              type="number"
-              step="any"
-              min={0}
-              ref={sessionTemperatureRef}
-            />
+          <div className="flex justify-between">
+            <button
+              type="submit"
+              className="flex items-center px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+            >
+              <SunIcon className="w-4 h-4 mr-2" />
+              Submit
+            </button>
+            <button
+              type="button"
+              onClick={resetUI}
+              className="flex items-center px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+            >
+              <RefreshCcwIcon className="w-4 h-4 mr-2" />
+              Reset
+            </button>
           </div>
         </form>
-        <h2>Session stats</h2>
-        <table style={styles.statsTable}>
-          <thead>
-            <tr>
-              <th style={styles.tableCell}>Temperature</th>
-              <th style={styles.tableCell}>Top-k</th>
-              <th style={styles.tableCell}>Tokens so far</th>
-              <th style={styles.tableCell}>Tokens left</th>
-              <th style={styles.tableCell}>Total tokens</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td id="temperature" style={styles.tableCell}>
-                {stats.temperature}
-              </td>
-              <td id="top-k" style={styles.tableCell}>
-                {stats.topK}
-              </td>
-              <td id="tokens-so-far" style={styles.tableCell}>
-                {stats.tokensSoFar}
-              </td>
-              <td id="tokens-left" style={styles.tableCell}>
-                {stats.tokensLeft}
-              </td>
-              <td id="max-tokens" style={styles.tableCell}>
-                {stats.maxTokens}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <h2>Conversation</h2>
-        <div
-          id="response-area"
-          ref={responseAreaRef}
-          style={styles.responseArea}
-          dangerouslySetInnerHTML={{ __html: response }}
-        />
-        <details>
-          <summary>Raw response</summary>
-          <div>{rawResponse}</div>
-        </details>
-        <button onClick={handleCopy} id="copy-link-button" style={styles.button}>
-          {isCopied ? 'Copied!' : 'Copy'}
-        </button>
-      </div>
-      <Summarizer />
 
+        {/* Response Area */}
+        <div className="p-4 bg-white border border-gray-300 rounded-md shadow-sm dark:bg-gray-700">
+          <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
+            AI Response
+          </h2>
+          <div
+            ref={responseAreaRef}
+            dangerouslySetInnerHTML={{ __html: response }}
+          />
+          <button
+            onClick={handleCopy}
+            className="mt-4 flex items-center px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+          >
+            <CopyIcon className="w-4 h-4 mr-2" />
+            {isCopied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+      </div>
+
+      {/* Settings Button */}
+      <button
+        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+        className="fixed bottom-4 right-4 bg-gray-800 text-white p-3 rounded-full shadow-lg hover:bg-gray-700"
+      >
+        <SettingsIcon className="w-5 h-5" />
+      </button>
+
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white dark:bg-gray-700 p-6 rounded-md space-y-4 shadow-lg w-96">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              Settings
+            </h2>
+            <div className="flex items-center">
+              <label className="mr-4">Top-k</label>
+              <input
+                type="number"
+                ref={sessionTopKRef}
+                className="flex-1 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100"
+                min={1}
+              />
+            </div>
+            <div className="flex items-center">
+              <label className="mr-4">Temperature</label>
+              <input
+                type="number"
+                ref={sessionTemperatureRef}
+                step="any"
+                className="flex-1 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-100"
+                min={0}
+              />
+            </div>
+            <button
+              onClick={() => setIsSettingsOpen(false)}
+              className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

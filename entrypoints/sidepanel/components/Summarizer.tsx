@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import DOMPurify from 'dompurify';
-import { marked } from 'marked';
+import React, { useEffect, useState } from "react";
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 
 const MAX_MODEL_CHARS = 4000;
 const summaryOptions = {
@@ -10,9 +10,9 @@ const summaryOptions = {
 };
 
 const Summarizer = () => {
-  const [pageContent, setPageContent] = useState('');
-  const [summary, setSummary] = useState('');
-  const [warning, setWarning] = useState('');
+  const [pageContent, setPageContent] = useState("");
+  const [summary, setSummary] = useState("");
+  const [warning, setWarning] = useState("");
 
   const updateWarning = (warningText: string) => {
     setWarning(warningText);
@@ -30,18 +30,18 @@ const Summarizer = () => {
       session.destroy(); // Destroy the session after use
       return summary;
     } catch (e: any) {
-      return 'Error: ' + e.message;
+      return "Error: " + e.message;
     }
   };
 
   const createSummarizationSession = async () => {
     if (!window.ai || !window.ai.summarizer) {
-      throw new Error('AI Summarization is not supported in this browser');
+      throw new Error("AI Summarization is not supported in this browser");
     }
 
     const canSummarize = await window.ai.summarizer.capabilities();
-    if (canSummarize.available === 'no') {
-      throw new Error('AI Summarization is not available');
+    if (canSummarize.available === "no") {
+      throw new Error("AI Summarization is not available");
     }
 
     const summarizationSession = await window.ai.summarizer.create({
@@ -50,9 +50,13 @@ const Summarizer = () => {
       length: summaryOptions.length[1], // 'medium'
     } as AISummarizerCreateOptions);
 
-    if (canSummarize.available === 'after-download') {
-      summarizationSession.addEventListener('downloadprogress', (progress) => {
-        console.log(`Model download progress: ${progress.loaded / progress.total * 100}%`);
+    if (canSummarize.available === "after-download") {
+      summarizationSession.addEventListener("downloadprogress", (progress) => {
+        console.log(
+          `Model download progress: ${
+            (progress.loaded / progress.total) * 100
+          }%`
+        );
       });
       await summarizationSession.ready; // Wait for the model to be ready if it needs downloading
     }
@@ -73,20 +77,20 @@ const Summarizer = () => {
       return;
     }
 
-    updateWarning(''); // Clear any previous warnings
-    showSummary('Loading...');
+    updateWarning(""); // Clear any previous warnings
+    showSummary("Loading...");
     const summaryText = await generateSummary(pageContent);
     showSummary(summaryText);
   };
 
   useEffect(() => {
     // Example of using chrome.storage or any content change listener
-    chrome.storage.session.get('pageContent', ({ pageContent }) => {
+    chrome.storage.session.get("pageContent", ({ pageContent }) => {
       setPageContent(pageContent);
     });
 
     chrome.storage.session.onChanged.addListener((changes) => {
-      const newContent = changes['pageContent']?.newValue;
+      const newContent = changes["pageContent"]?.newValue;
       if (pageContent !== newContent) {
         setPageContent(newContent);
       }
@@ -94,12 +98,23 @@ const Summarizer = () => {
   }, [pageContent]);
 
   return (
-    <div>
-      <h2>Summarizer</h2>
-      <button onClick={handleSummarizeClick}>Summarize Current Page</button>
-      {warning && <div className="warning" style={{ color: 'red' }}>{warning}</div>}
+    <div className="p-6 space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        Summarizer
+      </h2>
+      <button
+        onClick={handleSummarizeClick}
+        className="bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+      >
+        Summarize Current Page
+      </button>
+      {warning && (
+        <div className="mt-4 text-red-500 font-semibold" role="alert">
+          {warning}
+        </div>
+      )}
       <div
-        style={{ marginTop: '20px' }}
+        className="mt-6 p-4 border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100"
         dangerouslySetInnerHTML={{ __html: summary }}
       />
     </div>
