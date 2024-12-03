@@ -1,7 +1,7 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import React, { useState, useEffect, useMemo } from "react";
-import { X, BookOpen, StickyNote, Save } from "lucide-react";
+import { X, BookOpen, StickyNote, Save, RefreshCcw, Eye } from "lucide-react";
 import { storage } from "wxt/storage";
 import NotesView from "./notes/NotesView";
 
@@ -28,7 +28,7 @@ const NotesManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [currentView, setCurrentView] = useState<
-    "notes" | "flashcards" | "saved-flashcards"
+    "notes" | "flashcards" | "saved-flashcards" | "practice-flashcards"
   >("notes");
   const [currentFlashcard, setCurrentFlashcard] = useState<{
     question: string;
@@ -40,11 +40,16 @@ const NotesManager: React.FC = () => {
   const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
   const [aiSession, setAiSession] = useState<any>(null);
 
+  // Practice mode states
+  const [practiceFlashcards, setPracticeFlashcards] = useState<Flashcard[]>([]);
+  const [currentPracticeIndex, setCurrentPracticeIndex] = useState(0);
+  const [showPracticeAnswer, setShowPracticeAnswer] = useState(false);
+
   useEffect(() => {
     const initAiSession = async () => {
       const session = await ai.languageModel.create({
         systemPrompt:
-          "Pretend to be a Flashcard expert of Active Recall Learning. If you get a text, you will make a question out of that and an answer.",
+          "Act as a Flashcard expert specializing in Active Recall Learning. When given a text, generate a corresponding question based on the content and provide a concise answer.",
       });
       setAiSession(session);
     };
@@ -63,31 +68,55 @@ const NotesManager: React.FC = () => {
   }, []);
 
   const generateRandomFlashcard = async () => {
-    if (!aiSession || notes.length === 0) return;
+    if (!aiSession) {
+      console.error("AI session not initialized.");
+      return;
+    }
 
-    setGeneratingFlashcards(true);
+    if (notes.length === 0) {
+      console.warn("No notes available to generate flashcards.");
+      return;
+    }
 
-    // Filter notes that haven't been used for flashcards recently
+    // Filter notes with non-empty selectedText
     const eligibleNotes = notes.filter(
       (note) => note.selectedText.trim().length > 0
     );
 
-    // If no eligible notes, return
     if (eligibleNotes.length === 0) {
-      setGeneratingFlashcards(false);
+      console.warn("No eligible notes with selectedText available.");
       return;
     }
 
     // Select a random note
     const randomNote =
       eligibleNotes[Math.floor(Math.random() * eligibleNotes.length)];
+    console.log("Selected note for flashcard generation:", randomNote);
+
+    setGeneratingFlashcards(true);
+    setShowFlashcardAnswer(false);
 
     try {
-      const result = await aiSession.prompt(randomNote.selectedText);
+      // Create an AbortController to handle potential cancellation
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
 
-      // Extract question and answer using regex
-      const questionMatch = result.match(/\*Question:\*\s*(.+)/);
-      const answerMatch = result.match(/\*Answer:\*\s*(.+)/);
+      // Use AI session to generate a flashcard
+      const result = await aiSession.prompt(randomNote.selectedText, {
+        signal: controller.signal,
+      });
+
+      // Clear the timeout if successful
+      clearTimeout(timeoutId);
+
+      console.log("AI session response:", result);
+
+      // More robust parsing of question and answer
+      const questionRegex = /Question:\s*(.+?)(?=\s*Answer:|\s*$)/s;
+      const answerRegex = /Answer:\s*(.+)/s;
+
+      const questionMatch = result.match(questionRegex);
+      const answerMatch = result.match(answerRegex);
 
       if (questionMatch && answerMatch) {
         const flashcard = {
@@ -97,14 +126,140 @@ const NotesManager: React.FC = () => {
           tags: randomNote.tags,
         };
 
+        console.log("Generated flashcard:", flashcard);
         setCurrentFlashcard(flashcard);
         setCurrentView("flashcards");
+      } else {
+        console.error("Failed to parse flashcard question or answer:", result);
       }
     } catch (error) {
-      console.error("Error generating flashcard:", error);
+      if (error.name === "AbortError") {
+        console.warn("Flashcard generation was cancelled or timed out.");
+      } else {
+        console.error("Error generating flashcard:", error);
+      }
     } finally {
       setGeneratingFlashcards(false);
     }
+  };
+
+  const startPracticeMode = () => {
+    if (savedFlashcards.length === 0) return;
+
+    // Shuffle flashcards for practice
+    const shuffledFlashcards = [...savedFlashcards].sort(
+      () => Math.random() - 0.5
+    );
+
+    setPracticeFlashcards(shuffledFlashcards);
+    setCurrentPracticeIndex(0);
+    setShowPracticeAnswer(false);
+    setCurrentView("practice-flashcards");
+  };
+
+  const nextPracticeFlashcard = () => {
+    setShowPracticeAnswer(false);
+    if (currentPracticeIndex < practiceFlashcards.length - 1) {
+      setCurrentPracticeIndex((prev) => prev + 1);
+    } else {
+      // End of practice session
+      setCurrentView("saved-flashcards");
+    }
+  };
+
+  const renderPracticeFlashcardView = () => {
+    if (
+      practiceFlashcards.length === 0 ||
+      currentPracticeIndex >= practiceFlashcards.length
+    ) {
+      return (
+        <div className="text-center text-gray-500 py-10">
+          <div className="text-7xl mb-6">✅</div>
+          <p className="text-2xl font-medium mb-4">Practice Complete!</p>
+          <button
+            onClick={() => setCurrentView("saved-flashcards")}
+            className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200"
+          >
+            Back to Saved Flashcards
+          </button>
+        </div>
+      );
+    }
+
+    const currentFlashcard = practiceFlashcards[currentPracticeIndex];
+
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh]">
+        <div className="bg-white shadow-2xl rounded-3xl p-10 w-full max-w-3xl relative overflow-hidden border border-gray-100">
+          <div className="absolute top-6 left-6 flex flex-wrap gap-2">
+            {currentFlashcard.tags.map((tag) => (
+              <span
+                key={tag}
+                className="bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+            <span className="bg-gray-100 text-gray-600 text-xs font-medium px-3 py-1 rounded-full">
+              {currentPracticeIndex + 1} / {practiceFlashcards.length}
+            </span>
+          </div>
+
+          <div className="mt-12 mb-16">
+            <h2 className="text-3xl font-bold mb-8 text-gray-800">
+              Practice Flashcard
+            </h2>
+            <p className="text-gray-700 text-xl mb-10">
+              {currentFlashcard.question}
+            </p>
+
+            {showPracticeAnswer ? (
+              <>
+                <h3 className="text-2xl font-semibold mt-10 mb-6 text-gray-800">
+                  Answer
+                </h3>
+                <p className="text-gray-600 text-lg">
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(
+                        marked(currentFlashcard.answer)
+                      ),
+                    }}
+                  />
+                </p>
+                <div className="mt-6">
+                  <h4 className="text-xl font-semibold text-gray-800">
+                    Original Context
+                  </h4>
+                  <div className="text-gray-500 italic" dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(marked(currentFlashcard.originalText)),
+                  }}/>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowPracticeAnswer(true)}
+                className="border-2 border-blue-500 text-blue-500 font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
+              >
+                Show Answer
+              </button>
+            )}
+          </div>
+
+          <div className="flex justify-center items-center gap-8">
+            <button
+              onClick={nextPracticeFlashcard}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg flex items-center gap-2"
+            >
+              {currentPracticeIndex < practiceFlashcards.length - 1
+                ? "Next Flashcard"
+                : "Finish Practice"}
+              <RefreshCcw size={20} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const saveFlashcard = async () => {
@@ -153,51 +308,129 @@ const NotesManager: React.FC = () => {
     }
 
     return (
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {savedFlashcards.map((flashcard) => (
-          <div
-            key={flashcard.id}
-            className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-100"
-          >
-            <div className="p-8">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex flex-wrap gap-2">
-                  {flashcard.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+      <div>
+        <div className="flex justify-end mb-4">
+          {savedFlashcards.length > 0 && (
+            <button
+              onClick={startPracticeMode}
+              className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg flex items-center gap-2"
+            >
+              <Eye size={20} /> Start Practice
+            </button>
+          )}
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {savedFlashcards.map((flashcard) => (
+            <div
+              key={flashcard.id}
+              className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-100"
+            >
+              <div className="p-8">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex flex-wrap gap-2">
+                    {flashcard.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => deleteFlashcard(flashcard.id)}
+                    className="text-gray-400 hover:text-red-500 transition-colors duration-200 p-2 rounded-full hover:bg-red-50"
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => deleteFlashcard(flashcard.id)}
-                  className="text-gray-400 hover:text-red-500 transition-colors duration-200 p-2 rounded-full hover:bg-red-50"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div
-                className="text-gray-800 font-medium mb-4 text-lg"
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(marked(flashcard.question)),
-                }}
-              />
-              <div
-                className="text-sm text-gray-600 italic mb-6"
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(marked(flashcard.answer)),
-                }}
-              />
-              <div className="text-xs text-gray-400">
-                {new Date(flashcard.createdAt).toLocaleString()}
+                <div
+                  className="text-gray-800 font-medium mb-4 text-lg"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(marked(flashcard.question)),
+                  }}
+                />
+                <div
+                  className="text-sm text-gray-600 italic mb-6"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(marked(flashcard.answer)),
+                  }}
+                />
+                <div className="text-xs text-gray-400">
+                  {new Date(flashcard.createdAt).toLocaleString()}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
+  };
+
+  // Modify the view switching logic to include practice view
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case "notes":
+        return (
+          <NotesView
+            toggleTag={toggleTag}
+            allTags={allTags}
+            selectedTags={selectedTags}
+            filteredNotes={filteredNotes}
+            deleteNote={deleteNote}
+            key={selectedTags.join()}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+          />
+        );
+      case "flashcards":
+        return renderFlashcardView();
+      case "saved-flashcards":
+        return renderSavedFlashcardsView();
+      case "practice-flashcards":
+        return renderPracticeFlashcardView();
+      default:
+        return null;
+    }
+  };
+
+  // Update the view switching button to handle practice mode
+  const switchViewButton = () => {
+    switch (currentView) {
+      case "notes":
+        return {
+          text: "Switch to Flashcards",
+          icon: <BookOpen size={24} />,
+          action: () => {
+            setCurrentView("flashcards");
+            generateRandomFlashcard();
+          },
+        };
+      case "flashcards":
+        return {
+          text: "View Saved Flashcards",
+          icon: <Save size={24} />,
+          action: () => setCurrentView("saved-flashcards"),
+        };
+      case "saved-flashcards":
+        return {
+          text: "Back to Notes",
+          icon: <StickyNote size={24} />,
+          action: () => setCurrentView("notes"),
+        };
+      case "practice-flashcards":
+        return {
+          text: "Back to Saved Flashcards",
+          icon: <BookOpen size={24} />,
+          action: () => setCurrentView("saved-flashcards"),
+        };
+      default:
+        return {
+          text: "Switch View",
+          icon: <BookOpen size={24} />,
+          action: () => setCurrentView("notes"),
+        };
+    }
   };
 
   const renderFlashcardView = () => {
@@ -205,7 +438,7 @@ const NotesManager: React.FC = () => {
       return (
         <div className="text-center text-gray-500 py-10">
           <div className="text-7xl mb-6">🤔</div>
-          <p className="text-2xl font-medium mb-4">No flashcard generated</p>
+          <p className="text-2xl font-medium mb-4">Generating a flashcard for you</p>
           <button
             onClick={generateRandomFlashcard}
             disabled={generatingFlashcards}
@@ -235,9 +468,9 @@ const NotesManager: React.FC = () => {
             <h2 className="text-3xl font-bold mb-8 text-gray-800">
               Flashcard Question
             </h2>
-            <p className="text-gray-700 text-xl mb-10">
-              {currentFlashcard.question}
-            </p>
+            < div className="text-gray-700 text-xl mb-10" dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(marked(currentFlashcard.question)),
+                  }}/>
 
             {showFlashcardAnswer ? (
               <>
@@ -245,13 +478,13 @@ const NotesManager: React.FC = () => {
                   Answer
                 </h3>
                 <p className="text-gray-600 text-lg">
-                  {
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: DOMPurify.sanitize(marked(answer)),
-                      }}
-                    />
-                  }
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(
+                        marked(currentFlashcard.answer)
+                      ),
+                    }}
+                  />
                 </p>
                 <div className="mt-6">
                   <h4 className="text-xl font-semibold text-gray-800">
@@ -339,8 +572,8 @@ const NotesManager: React.FC = () => {
 
   return (
     <div className="bg-gray-50 min-h-[calc(100vh-64px)]">
-      <div className="container mx-auto px-6 py-4">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-12">
+      <div className="max-w-full mx-auto px-6 py-4">
+          <div className="flex items-center justify-between mb-5">
           <h1 className="text-5xl font-bold text-gray-800 mb-6 md:mb-0 flex items-center">
             {currentView === "notes" ? (
               <>
@@ -357,59 +590,18 @@ const NotesManager: React.FC = () => {
               </>
             )}
           </h1>
-          <div className="flex items-center gap-4">
             <button
-              onClick={() => {
-                switch (currentView) {
-                  case "notes":
-                    setCurrentView("flashcards");
-                    generateRandomFlashcard();
-                    break;
-                  case "flashcards":
-                    setCurrentView("saved-flashcards");
-                    break;
-                  case "saved-flashcards":
-                    setCurrentView("notes");
-                    break;
-                }
-              }}
+              onClick={switchViewButton().action}
               className="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg text-lg font-semibold"
             >
-              {currentView === "notes"
-                ? "Switch to Flashcards"
-                : currentView === "flashcards"
-                ? "View Saved Flashcards"
-                : "Back to Notes"}
-              {currentView === "notes" ? (
-                <BookOpen size={24} />
-              ) : currentView === "flashcards" ? (
-                <Save size={24} />
-              ) : (
-                <StickyNote size={24} />
-              )}
+              {switchViewButton().text}
+              {switchViewButton().icon}
             </button>
           </div>
-        </div>
 
-        {/* Rest of the existing UI remains the same */}
-        {currentView === "notes" ? (
-          <NotesView
-            toggleTag={toggleTag}
-            allTags={allTags}
-            selectedTags={selectedTags}
-            filteredNotes={filteredNotes}
-            deleteNote={deleteNote}
-            key={selectedTags.join()}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-          />
-        ) : currentView === "flashcards" ? (
-          renderFlashcardView()
-        ) : (
-          renderSavedFlashcardsView()
-        )}
+          {renderCurrentView()}
+        </div>
       </div>
-    </div>
   );
 };
 

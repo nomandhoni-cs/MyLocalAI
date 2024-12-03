@@ -12,7 +12,7 @@ const NotesSearch: React.FC<NotesSearchProps> = ({
   onSearchChange,
 }) => {
   return (
-    <div className="mb-6 flex gap-4">
+    <div className="mb-8 flex gap-4">
       <div className="relative flex-grow">
         <input
           type="text"
