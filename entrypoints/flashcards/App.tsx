@@ -1,11 +1,10 @@
 import "./App.css";
-import Navbar from "../sidepanel/components/Navbar";
+import NotesManager from "./components/NotesManager";
 
 function App() {
   return (
     <>
-      <Navbar />
-      <h1 className="text-4xl">WXT + React</h1>
+      <NotesManager />
     </>
   );
 }

@@ -8,7 +8,7 @@ export const ThemeChanger = () => {
     <div>
       {theme === "light" ? (
         <button onClick={() => setTheme("dark")}>
-          <MoonIcon className="h-5 w-5" />
+          <MoonIcon className="h-5 w-5 text-white" />
         </button>
       ) : (
         <button onClick={() => setTheme("light")}>
