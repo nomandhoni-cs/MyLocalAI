@@ -98,13 +98,11 @@ const Summarizer = () => {
   }, [pageContent]);
 
   return (
-    <div className="p-6 space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-        Summarizer
-      </h2>
+    <div className="p-6 space-y-6 ">
+      <h2 className="text-2xl font-bold">Summarizer</h2>
       <button
         onClick={handleSummarizeClick}
-        className="bg-blue-500 text-white py-2 px-6 rounded-md hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+        className="bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none"
       >
         Summarize Current Page
       </button>
@@ -114,7 +112,7 @@ const Summarizer = () => {
         </div>
       )}
       <div
-        className="mt-6 p-4 border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+        className="mt-6 p-4 border border-gray-300 dark:border-gray-700 rounded-md"
         dangerouslySetInnerHTML={{ __html: summary }}
       />
     </div>
