@@ -1,6 +1,29 @@
 import DOMPurify from "dompurify";
-import { isProbablyReaderable, Readability } from "@mozilla/readability";
 import { marked } from "marked";
+import { isProbablyReaderable, Readability } from "@mozilla/readability";
+import { storage } from "@wxt-dev/storage";
+
+const summarizations = storage.defineItem<
+  Array<{ mainText: string; summary: string; key: string }>
+>("local:summarizations", {
+  fallback: [], // Default value is an empty array
+});
+
+// Function to add a new summarization
+async function addSummarization(mainText: string, summary: string) {
+  const key = new Date().toISOString(); // Unique key for the summarization
+  const currentSummarizations = await summarizations.getValue(); // Get current array
+
+  // Add the new summarization to the array
+  const updatedSummarizations = [
+    ...currentSummarizations,
+    { mainText, summary, key },
+  ];
+
+  // Save the updated array back to storage
+  await summarizations.setValue(updatedSummarizations);
+}
+
 console.log("test");
 let isSummaryDisplayed = false;
 const summaryOptions = {
@@ -40,11 +63,14 @@ function addStickyButton() {
         removeSummaryElement();
       } else {
         // If summary is not displayed, show "Summarizing the text"
-        createSummaryElement("Summarizing the text...");
+        createSummaryElement("Summarizing this page for you...");
 
         // Wait for the summarization to complete
         const summary = await summarizeText(textHaveToBeSummarized);
-        // Update the summary div with the actual summary
+        if (summary) {
+          // Update the summary div with the actual summary
+          await addSummarization(textHaveToBeSummarized, summary);
+        }
         updateSummaryElement(summary);
       }
     } else {
@@ -96,7 +122,7 @@ function updateSummaryElement(markdownSummary: string) {
     if (summaryParagraph) {
       // Convert markdown to HTML and sanitize
       const htmlSummary = DOMPurify.sanitize(marked(markdownSummary));
-      summaryParagraph.innerHTML = htmlSummary; // Update the paragraph with the sanitized HTML summary
+      summaryParagraph.innerHTML = htmlSummary;
     }
   }
 }
@@ -315,3 +341,35 @@ function styleStickyButton(button) {
   button.style.zIndex = "9999";
 }
 // Sticky Button style end
+
+async function retrieveSummarizations() {
+  try {
+    // Fetch the current summarizations from storage
+    const storedSummarizations = await summarizations.getValue();
+
+    // Check if there are any summarizations
+    if (storedSummarizations.length === 0) {
+      console.log("No summarizations found.");
+      return [];
+    }
+
+    // Log or use the summarizations
+    console.log("Retrieved summarizations:", storedSummarizations);
+    return storedSummarizations;
+  } catch (error) {
+    console.error("Error retrieving summarizations:", error);
+    return [];
+  }
+}
+
+// Example usage
+(async () => {
+  const allSummarizations = await retrieveSummarizations();
+
+  // Do something with the data
+  allSummarizations.forEach((entry) => {
+    console.log(`Key: ${entry.key}`);
+    console.log(`Main Text: ${entry.mainText}`);
+    console.log(`Summary: ${entry.summary}`);
+  });
+})();

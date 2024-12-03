@@ -3,6 +3,7 @@ import DOMPurify from "dompurify";
 import { marked } from "marked";
 import Summarizer from "./components/Summarizer";
 import { SunIcon, SettingsIcon, CopyIcon, RefreshCcwIcon } from "lucide-react";
+import SummarizationsList from "./components/SummarizationList";
 
 const App: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
@@ -107,14 +108,11 @@ const App: React.FC = () => {
     setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
   };
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-md">
-      <h1 className="text-3xl font-bold text-center text-gray-900 dark:text-gray-100">
-        MyLocal AI
-      </h1>
-
+    <div className="w-full mx-auto p-1 space-y-6 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-md">
       {error && <div className="text-red-500">{error}</div>}
+      <SummarizationsList />
 
-      <Summarizer />
+      {/* <Summarizer />  */}
 
       {/* Chat Interface */}
       <div className="space-y-6">
