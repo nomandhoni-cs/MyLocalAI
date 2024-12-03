@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root {
+  /* Your default theme */
+  --background: white;
+  --foreground: #111111;
+}
+
+[data-theme='dark'] {
+  --background: #333333;
+  --foreground: white;
+}

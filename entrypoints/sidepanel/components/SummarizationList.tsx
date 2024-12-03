@@ -60,12 +60,14 @@ const SummarizationsList: React.FC = () => {
   };
 
   return (
-    <div className="w-full mx-auto p-4">
-      <h1 className="text-xl font-semibold mb-4 text-center">
+    <div className="w-full mx-auto py-1">
+      <h1 className="text-xl font-semibold mb-1 text-center">
         Recent Summarizations
       </h1>
       {summarizations.length === 0 ? (
-        <p className="text-gray-500 text-center">No summarizations found.</p>
+        <p className="text-muted-foreground dark:text-white text-center">
+          No summarizations found.
+        </p>
       ) : (
         <div className="space-y-4">
           {displayedSummarizations.map((entry) => (

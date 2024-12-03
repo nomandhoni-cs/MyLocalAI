@@ -4,6 +4,8 @@ import { marked } from "marked";
 import Summarizer from "./components/Summarizer";
 import { SunIcon, SettingsIcon, CopyIcon, RefreshCcwIcon } from "lucide-react";
 import SummarizationsList from "./components/SummarizationList";
+import { ThemeChanger } from "./components/ThemeChanger";
+import Navbar from "./components/Navbar";
 
 const App: React.FC = () => {
   const [isCopied, setIsCopied] = useState(false);
@@ -108,8 +110,9 @@ const App: React.FC = () => {
     setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
   };
   return (
-    <div className="w-full mx-auto p-1 space-y-6 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-md">
+    <div className="w-full mx-auto p-1 space-y-3 ">
       {error && <div className="text-red-500">{error}</div>}
+      <Navbar />
       <SummarizationsList />
 
       {/* <Summarizer />  */}
