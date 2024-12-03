@@ -72,7 +72,7 @@ jobs:
         run: |
           for zip in ./.output/*.zip; do
             echo "Uploading $zip"
-            gh release upload "v${{ github.run_number }}" "$zip" --clobber
+            gh release upload "v${{ env.VERSION }}" "$zip" --clobber
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Ensure the token is set
