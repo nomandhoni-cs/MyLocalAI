@@ -1,77 +1,57 @@
-// src/components/flashcards/FlashcardView.tsx
-import React, { useState } from "react";
-import FlashcardNavigation from "./FlashcardNavigation";
-import { Note } from "../../types/Note";
+import React from "react";
 
 interface FlashcardViewProps {
-  flashcards: Note[];
+  flashcard: { question: string; answer: string };
+  originalNote: { selectedText: string };
+  showAnswer: boolean;
+  onShowAnswer: () => void;
 }
 
-const FlashcardView: React.FC<FlashcardViewProps> = ({ flashcards }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [showAnswer, setShowAnswer] = useState(false);
-
-  if (flashcards.length === 0) {
-    return (
-      <div className="text-center text-gray-500 py-8">
-        No flashcards available. Add some notes with text!
-      </div>
-    );
-  }
-
-  const currentNote = flashcards[currentIndex];
-
-  const nextFlashcard = () => {
-    setCurrentIndex((prev) => (prev + 1) % flashcards.length);
-    setShowAnswer(false);
-  };
-
-  const prevFlashcard = () => {
-    setCurrentIndex((prev) => (prev === 0 ? flashcards.length - 1 : prev - 1));
-    setShowAnswer(false);
-  };
-
+const FlashcardView: React.FC<FlashcardViewProps> = ({
+  flashcard,
+  originalNote,
+  showAnswer,
+  onShowAnswer,
+}) => {
   return (
-    <div className="flex flex-col items-center justify-center h-[60vh]">
-      <div className="bg-white shadow-lg rounded-xl p-6 w-full max-w-xl text-center relative">
-        <div className="absolute top-4 left-4 flex gap-2">
-          {currentNote.tags.map((tag) => (
-            <span
-              key={tag}
-              className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+    <div className="bg-white shadow-2xl rounded-3xl p-10 w-full max-w-3xl relative overflow-hidden border border-gray-100">
+      <div className="absolute top-6 left-6 flex flex-wrap gap-2">
+        {originalNote.selectedText && (
+          <span className="bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full">
+            {originalNote.selectedText}
+          </span>
+        )}
+      </div>
 
-        <div className="mt-8">
-          <h2 className="text-xl font-bold mb-4">Selected Text</h2>
-          <p className="text-gray-700 mb-4">{currentNote.selectedText}</p>
+      <div className="mt-12 mb-16">
+        <h2 className="text-3xl font-bold mb-8 text-gray-800">
+          Flashcard Question
+        </h2>
+        <p className="text-gray-700 text-xl mb-10">{flashcard.question}</p>
 
-          {showAnswer ? (
-            <>
-              <h3 className="text-lg font-semibold mt-4">Notes</h3>
-              <p className="text-gray-600">
-                {currentNote.text || "No additional notes"}
+        {showAnswer ? (
+          <>
+            <h3 className="text-2xl font-semibold mt-10 mb-6 text-gray-800">
+              Answer
+            </h3>
+            <p className="text-gray-600 text-lg">{flashcard.answer}</p>
+            <div className="mt-6">
+              <h4 className="text-xl font-semibold text-gray-800">
+                Original Context
+              </h4>
+              <p className="text-gray-500 italic">
+                {originalNote.selectedText}
               </p>
-            </>
-          ) : (
-            <button
-              onClick={() => setShowAnswer(true)}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-            >
-              Show Answer
-            </button>
-          )}
-        </div>
-
-        <FlashcardNavigation
-          currentIndex={currentIndex}
-          totalCards={flashcards.length}
-          onPrev={prevFlashcard}
-          onNext={nextFlashcard}
-        />
+            </div>
+          </>
+        ) : (
+          <button
+            onClick={onShowAnswer}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
+          >
+            Show Answer
+          </button>
+        )}
       </div>
     </div>
   );

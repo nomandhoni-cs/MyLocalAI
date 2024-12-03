@@ -19,17 +19,12 @@ const NotesSearch: React.FC<NotesSearchProps> = ({
           placeholder="Search notes..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-14 pr-6 py-2 border-2 border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-lg"
         />
         <Search
           className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
           size={20}
         />
-      </div>
-      <div className="relative">
-        <button className="bg-gray-200 p-2 rounded-lg hover:bg-gray-300">
-          <Filter />
-        </button>
       </div>
     </div>
   );
