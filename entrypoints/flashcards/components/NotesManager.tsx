@@ -178,12 +178,18 @@ const NotesManager: React.FC = () => {
                   <X size={20} />
                 </button>
               </div>
-              <p className="text-gray-800 font-medium mb-4 text-lg">
-                {flashcard.question}
-              </p>
-              <p className="text-sm text-gray-600 italic mb-6">
-                {flashcard.answer}
-              </p>
+              <div
+                className="text-gray-800 font-medium mb-4 text-lg"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(marked(flashcard.question)),
+                }}
+              />
+              <div
+                className="text-sm text-gray-600 italic mb-6"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(marked(flashcard.answer)),
+                }}
+              />
               <div className="text-xs text-gray-400">
                 {new Date(flashcard.createdAt).toLocaleString()}
               </div>
@@ -242,9 +248,7 @@ const NotesManager: React.FC = () => {
                   {
                     <div
                       dangerouslySetInnerHTML={{
-                        __html: DOMPurify.sanitize(
-                          marked(currentFlashcard.answer)
-                        ),
+                        __html: DOMPurify.sanitize(marked(answer)),
                       }}
                     />
                   }
