@@ -56,9 +56,9 @@ jobs:
         id: create_release
         uses: actions/create-release@v1
         with:
-          tag_name: "v${{ github.run_number }}"
-          release_name: "Release ${{ github.run_number }} for ${{ github.event.inputs.branch }}"
-          draft: true
+          tag_name: "v${{ env.VERSION }}"
+          release_name: "Release MyLocal AI v${{ env.VERSION }}"
+          draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Pass the token here
