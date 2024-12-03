@@ -59,7 +59,7 @@ export default defineBackground(() => {
   });
 
   chrome.contextMenus.create({
-    id: "open_side_panel",
+    id: "save_this_selection",
     title: "Save this as Notes",
     contexts: ["selection"],
   });
