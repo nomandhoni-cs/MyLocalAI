@@ -18,6 +18,16 @@ interface Note {
   tags: string[];
   selectedText: string;
   createdAt: number;
+  flashcard?: {
+    question: string;
+    answer: string;
+  };
+}
+
+interface Flashcard {
+  question: string;
+  answer: string;
+  originalNoteId: string;
 }
 
 const NotesManager: React.FC = () => {
@@ -29,14 +39,73 @@ const NotesManager: React.FC = () => {
   );
   const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
   const [showFlashcardAnswer, setShowFlashcardAnswer] = useState(false);
+  const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
+  const [aiSession, setAiSession] = useState<any>(null);
 
   useEffect(() => {
+    const initAiSession = async () => {
+      const session = await ai.languageModel.create({
+        systemPrompt:
+          "Pretend to be a Flashcard expert of Active Recall Learning. If you get a text, you will make a question out of that and an answer.",
+      });
+      setAiSession(session);
+    };
+
     const fetchNotes = async () => {
       const storedNotes = (await storage.getItem<Note[]>("local:notes")) || [];
       setNotes(storedNotes);
     };
+
+    initAiSession();
     fetchNotes();
   }, []);
+
+  const generateFlashcards = async () => {
+    if (!aiSession) return;
+
+    setGeneratingFlashcards(true);
+    const updatedNotes = await Promise.all(
+      notes.map(async (note) => {
+        // Skip if already has a flashcard or no selected text
+        if (note.flashcard || !note.selectedText.trim()) return note;
+
+        try {
+          const result = await aiSession.prompt(note.selectedText);
+
+          // Extract question and answer using regex
+          const questionMatch = result.match(/\*Question:\*\s*(.+)/);
+          const answerMatch = result.match(/\*Answer:\*\s*(.+)/);
+
+          if (questionMatch && answerMatch) {
+            return {
+              ...note,
+              flashcard: {
+                question: questionMatch[1].trim(),
+                answer: answerMatch[1].trim(),
+              },
+            };
+          }
+        } catch (error) {
+          console.error("Error generating flashcard:", error);
+        }
+
+        return note;
+      })
+    );
+
+    setNotes(updatedNotes);
+    await storage.setItem("local:notes", updatedNotes);
+    setGeneratingFlashcards(false);
+  };
+
+  const filteredFlashcards = useMemo(() => {
+    return notes
+      .filter((note) => note.flashcard)
+      .map((note) => ({
+        ...note.flashcard!,
+        originalNoteId: note.id,
+      })) as Flashcard[];
+  }, [notes]);
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -132,25 +201,32 @@ const NotesManager: React.FC = () => {
   );
 
   const renderFlashcardsView = () => {
-    if (flashcardNotes.length === 0) {
+    if (filteredFlashcards.length === 0) {
       return (
         <div className="text-center text-gray-500 py-10">
           <div className="text-7xl mb-6">🤔</div>
           <p className="text-2xl font-medium mb-4">No flashcards available</p>
-          <p className="text-lg">
-            Add some notes with selected text to create flashcards!
-          </p>
+          <button
+            onClick={generateFlashcards}
+            disabled={generatingFlashcards}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
+          >
+            {generatingFlashcards ? "Generating..." : "Generate AI Flashcards"}
+          </button>
         </div>
       );
     }
 
-    const currentNote = flashcardNotes[currentFlashcardIndex];
+    const currentFlashcard = filteredFlashcards[currentFlashcardIndex];
+    const originalNote = notes.find(
+      (note) => note.id === currentFlashcard.originalNoteId
+    )!;
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh]">
         <div className="bg-white shadow-2xl rounded-3xl p-10 w-full max-w-3xl relative overflow-hidden border border-gray-100">
           <div className="absolute top-6 left-6 flex flex-wrap gap-2">
-            {currentNote.tags.map((tag) => (
+            {originalNote.tags.map((tag) => (
               <span
                 key={tag}
                 className="bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full"
@@ -162,20 +238,28 @@ const NotesManager: React.FC = () => {
 
           <div className="mt-12 mb-16">
             <h2 className="text-3xl font-bold mb-8 text-gray-800">
-              Selected Text
+              Flashcard Question
             </h2>
             <p className="text-gray-700 text-xl mb-10">
-              {currentNote.selectedText}
+              {currentFlashcard.question}
             </p>
 
             {showFlashcardAnswer ? (
               <>
                 <h3 className="text-2xl font-semibold mt-10 mb-6 text-gray-800">
-                  Notes
+                  Answer
                 </h3>
                 <p className="text-gray-600 text-lg">
-                  {currentNote.text || "No additional notes"}
+                  {currentFlashcard.answer}
                 </p>
+                <div className="mt-6">
+                  <h4 className="text-xl font-semibold text-gray-800">
+                    Original Context
+                  </h4>
+                  <p className="text-gray-500 italic">
+                    {originalNote.selectedText}
+                  </p>
+                </div>
               </>
             ) : (
               <button
@@ -189,16 +273,26 @@ const NotesManager: React.FC = () => {
 
           <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex justify-center items-center gap-8">
             <button
-              onClick={prevFlashcard}
+              onClick={() => {
+                setCurrentFlashcardIndex((prev) =>
+                  prev === 0 ? filteredFlashcards.length - 1 : prev - 1
+                );
+                setShowFlashcardAnswer(false);
+              }}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 p-4 rounded-full transition-colors duration-200 shadow-md"
             >
               <ChevronLeft size={24} />
             </button>
             <div className="text-gray-500 font-medium text-lg">
-              {currentFlashcardIndex + 1} / {flashcardNotes.length}
+              {currentFlashcardIndex + 1} / {filteredFlashcards.length}
             </div>
             <button
-              onClick={nextFlashcard}
+              onClick={() => {
+                setCurrentFlashcardIndex(
+                  (prev) => (prev + 1) % filteredFlashcards.length
+                );
+                setShowFlashcardAnswer(false);
+              }}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 p-4 rounded-full transition-colors duration-200 shadow-md"
             >
               <ChevronRight size={24} />
