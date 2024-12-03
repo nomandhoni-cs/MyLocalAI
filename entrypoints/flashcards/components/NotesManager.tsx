@@ -44,7 +44,7 @@ const NotesManager: React.FC = () => {
     const initAiSession = async () => {
       const session = await ai.languageModel.create({
         systemPrompt:
-          "Pretend to be a Flashcard expert of Active Recall Learning. If you get a text, you will make a question out of that and an answer.",
+          "Act as a Flashcard expert specializing in Active Recall Learning. When given a text, generate a corresponding question based on the content and provide a concise answer.",
       });
       setAiSession(session);
     };
@@ -63,32 +63,43 @@ const NotesManager: React.FC = () => {
   }, []);
 
   const generateRandomFlashcard = async () => {
-    if (!aiSession || notes.length === 0) return;
-
-    setGeneratingFlashcards(true);
-
-    // Filter notes that haven't been used for flashcards recently
-    const eligibleNotes = notes.filter(
-      (note) => note.selectedText.trim().length > 0
-    );
-
-    // If no eligible notes, return
-    if (eligibleNotes.length === 0) {
-      setGeneratingFlashcards(false);
+    if (!aiSession) {
+      console.error("AI session not initialized.");
       return;
     }
-
+  
+    if (notes.length === 0) {
+      console.warn("No notes available to generate flashcards.");
+      return;
+    }
+  
+    // Filter notes with non-empty selectedText
+    const eligibleNotes = notes.filter((note) => note.selectedText.trim().length > 0);
+  
+    if (eligibleNotes.length === 0) {
+      console.warn("No eligible notes with selectedText available.");
+      return;
+    }
+  
     // Select a random note
-    const randomNote =
-      eligibleNotes[Math.floor(Math.random() * eligibleNotes.length)];
-
+    const randomNote = eligibleNotes[Math.floor(Math.random() * eligibleNotes.length)];
+    console.log("Selected note for flashcard generation:", randomNote);
+  
+    setGeneratingFlashcards(true);
+  
     try {
+      // Use AI session to generate a flashcard
       const result = await aiSession.prompt(randomNote.selectedText);
-
+      console.log("AI session response:", result);
+  
       // Extract question and answer using regex
       const questionMatch = result.match(/\*Question:\*\s*(.+)/);
       const answerMatch = result.match(/\*Answer:\*\s*(.+)/);
-
+      console.log(questionMatch);
+      console.log(answerMatch);
+      
+      
+  
       if (questionMatch && answerMatch) {
         const flashcard = {
           question: questionMatch[1].trim(),
@@ -96,9 +107,13 @@ const NotesManager: React.FC = () => {
           originalText: randomNote.selectedText,
           tags: randomNote.tags,
         };
-
+  
+        console.log("Generated flashcard:", flashcard);
         setCurrentFlashcard(flashcard);
         setCurrentView("flashcards");
+        // aiSession.destroy();
+      } else {
+        console.error("Failed to parse flashcard question or answer:", result);
       }
     } catch (error) {
       console.error("Error generating flashcard:", error);
@@ -106,6 +121,7 @@ const NotesManager: React.FC = () => {
       setGeneratingFlashcards(false);
     }
   };
+  
 
   const saveFlashcard = async () => {
     if (!currentFlashcard) return;
@@ -216,7 +232,7 @@ const NotesManager: React.FC = () => {
         </div>
       );
     }
-
+  
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh]">
         <div className="bg-white shadow-2xl rounded-3xl p-10 w-full max-w-3xl relative overflow-hidden border border-gray-100">
@@ -230,36 +246,24 @@ const NotesManager: React.FC = () => {
               </span>
             ))}
           </div>
-
+  
           <div className="mt-12 mb-16">
-            <h2 className="text-3xl font-bold mb-8 text-gray-800">
-              Flashcard Question
-            </h2>
-            <p className="text-gray-700 text-xl mb-10">
-              {currentFlashcard.question}
-            </p>
-
+            <h2 className="text-3xl font-bold mb-8 text-gray-800">Flashcard Question</h2>
+            <p className="text-gray-700 text-xl mb-10">{currentFlashcard.question}</p>
+  
             {showFlashcardAnswer ? (
               <>
-                <h3 className="text-2xl font-semibold mt-10 mb-6 text-gray-800">
-                  Answer
-                </h3>
+                <h3 className="text-2xl font-semibold mt-10 mb-6 text-gray-800">Answer</h3>
                 <p className="text-gray-600 text-lg">
-                  {
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: DOMPurify.sanitize(marked(answer)),
-                      }}
-                    />
-                  }
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(marked(currentFlashcard.answer)),
+                    }}
+                  />
                 </p>
                 <div className="mt-6">
-                  <h4 className="text-xl font-semibold text-gray-800">
-                    Original Context
-                  </h4>
-                  <p className="text-gray-500 italic">
-                    {currentFlashcard.originalText}
-                  </p>
+                  <h4 className="text-xl font-semibold text-gray-800">Original Context</h4>
+                  <p className="text-gray-500 italic">{currentFlashcard.originalText}</p>
                 </div>
               </>
             ) : (
@@ -271,7 +275,7 @@ const NotesManager: React.FC = () => {
               </button>
             )}
           </div>
-
+  
           <div className="flex justify-center items-center gap-8">
             {!savedFlashcards.some(
               (fc) =>
@@ -296,6 +300,7 @@ const NotesManager: React.FC = () => {
       </div>
     );
   };
+  
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
