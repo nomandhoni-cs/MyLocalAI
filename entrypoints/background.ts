@@ -52,9 +52,14 @@ export default defineBackground(() => {
   //   title: "Summarize this page",
   //   contexts: ["page"],
   // });
+  chrome.contextMenus.create({
+    id: "open_side_panel",
+    title: "Open Side Panel",
+    contexts: ["page"],
+  });
 
   chrome.contextMenus.create({
-    id: "save_this_selection",
+    id: "open_side_panel",
     title: "Save this as Notes",
     contexts: ["selection"],
   });
@@ -69,6 +74,9 @@ export default defineBackground(() => {
     //   chrome.sidePanel.open({ tabId: tab.id });
     //   showSummary(tab.id);
     // }
+    if (info.menuItemId === "open_side_panel") {
+      chrome.sidePanel.open({ tabId: tab.id });
+    }
 
     if (info.menuItemId === "save_this_selection") {
       console.log("Save selection context menu clicked");
