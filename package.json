@@ -2,7 +2,7 @@
   "name": "MyLocal AI",
   "description": "A personalized AI that stays secure and private on the user’s machine.",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
