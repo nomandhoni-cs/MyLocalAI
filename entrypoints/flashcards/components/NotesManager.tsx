@@ -1,16 +1,9 @@
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 import React, { useState, useEffect, useMemo } from "react";
-import {
-  Search,
-  Tag,
-  Filter,
-  X,
-  BookOpen,
-  StickyNote,
-  ChevronRight,
-  ChevronLeft,
-  Plus,
-} from "lucide-react";
+import { X, BookOpen, StickyNote, Save } from "lucide-react";
 import { storage } from "wxt/storage";
+import NotesView from "./notes/NotesView";
 
 interface Note {
   id: string;
@@ -18,26 +11,31 @@ interface Note {
   tags: string[];
   selectedText: string;
   createdAt: number;
-  flashcard?: {
-    question: string;
-    answer: string;
-  };
 }
 
 interface Flashcard {
+  id: string;
   question: string;
   answer: string;
-  originalNoteId: string;
+  originalText: string;
+  tags: string[];
+  createdAt: number;
 }
 
 const NotesManager: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [savedFlashcards, setSavedFlashcards] = useState<Flashcard[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [currentView, setCurrentView] = useState<"notes" | "flashcards">(
-    "notes"
-  );
-  const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
+  const [currentView, setCurrentView] = useState<
+    "notes" | "flashcards" | "saved-flashcards"
+  >("notes");
+  const [currentFlashcard, setCurrentFlashcard] = useState<{
+    question: string;
+    answer: string;
+    originalText: string;
+    tags: string[];
+  } | null>(null);
   const [showFlashcardAnswer, setShowFlashcardAnswer] = useState(false);
   const [generatingFlashcards, setGeneratingFlashcards] = useState(false);
   const [aiSession, setAiSession] = useState<any>(null);
@@ -51,61 +49,249 @@ const NotesManager: React.FC = () => {
       setAiSession(session);
     };
 
-    const fetchNotes = async () => {
+    const fetchInitialData = async () => {
       const storedNotes = (await storage.getItem<Note[]>("local:notes")) || [];
+      const storedFlashcards =
+        (await storage.getItem<Flashcard[]>("local:flashcards")) || [];
+
       setNotes(storedNotes);
+      setSavedFlashcards(storedFlashcards);
     };
 
     initAiSession();
-    fetchNotes();
+    fetchInitialData();
   }, []);
 
-  const generateFlashcards = async () => {
-    if (!aiSession) return;
+  const generateRandomFlashcard = async () => {
+    if (!aiSession || notes.length === 0) return;
 
     setGeneratingFlashcards(true);
-    const updatedNotes = await Promise.all(
-      notes.map(async (note) => {
-        // Skip if already has a flashcard or no selected text
-        if (note.flashcard || !note.selectedText.trim()) return note;
 
-        try {
-          const result = await aiSession.prompt(note.selectedText);
-
-          // Extract question and answer using regex
-          const questionMatch = result.match(/\*Question:\*\s*(.+)/);
-          const answerMatch = result.match(/\*Answer:\*\s*(.+)/);
-
-          if (questionMatch && answerMatch) {
-            return {
-              ...note,
-              flashcard: {
-                question: questionMatch[1].trim(),
-                answer: answerMatch[1].trim(),
-              },
-            };
-          }
-        } catch (error) {
-          console.error("Error generating flashcard:", error);
-        }
-
-        return note;
-      })
+    // Filter notes that haven't been used for flashcards recently
+    const eligibleNotes = notes.filter(
+      (note) => note.selectedText.trim().length > 0
     );
 
-    setNotes(updatedNotes);
-    await storage.setItem("local:notes", updatedNotes);
-    setGeneratingFlashcards(false);
+    // If no eligible notes, return
+    if (eligibleNotes.length === 0) {
+      setGeneratingFlashcards(false);
+      return;
+    }
+
+    // Select a random note
+    const randomNote =
+      eligibleNotes[Math.floor(Math.random() * eligibleNotes.length)];
+
+    try {
+      const result = await aiSession.prompt(randomNote.selectedText);
+
+      // Extract question and answer using regex
+      const questionMatch = result.match(/\*Question:\*\s*(.+)/);
+      const answerMatch = result.match(/\*Answer:\*\s*(.+)/);
+
+      if (questionMatch && answerMatch) {
+        const flashcard = {
+          question: questionMatch[1].trim(),
+          answer: answerMatch[1].trim(),
+          originalText: randomNote.selectedText,
+          tags: randomNote.tags,
+        };
+
+        setCurrentFlashcard(flashcard);
+        setCurrentView("flashcards");
+      }
+    } catch (error) {
+      console.error("Error generating flashcard:", error);
+    } finally {
+      setGeneratingFlashcards(false);
+    }
   };
 
-  const filteredFlashcards = useMemo(() => {
-    return notes
-      .filter((note) => note.flashcard)
-      .map((note) => ({
-        ...note.flashcard!,
-        originalNoteId: note.id,
-      })) as Flashcard[];
-  }, [notes]);
+  const saveFlashcard = async () => {
+    if (!currentFlashcard) return;
+
+    const newFlashcard: Flashcard = {
+      id: `flashcard-${Date.now()}`,
+      ...currentFlashcard,
+      createdAt: Date.now(),
+    };
+
+    const updatedFlashcards = [...savedFlashcards, newFlashcard];
+    setSavedFlashcards(updatedFlashcards);
+    await storage.setItem("local:flashcards", updatedFlashcards);
+
+    // Reset current flashcard
+    setCurrentFlashcard(null);
+    setCurrentView("saved-flashcards");
+  };
+
+  const deleteFlashcard = async (flashcardId: string) => {
+    const updatedFlashcards = savedFlashcards.filter(
+      (fc) => fc.id !== flashcardId
+    );
+    setSavedFlashcards(updatedFlashcards);
+    await storage.setItem("local:flashcards", updatedFlashcards);
+  };
+
+  const renderSavedFlashcardsView = () => {
+    if (savedFlashcards.length === 0) {
+      return (
+        <div className="text-center text-gray-500 py-10">
+          <div className="text-7xl mb-6">📝</div>
+          <p className="text-2xl font-medium mb-4">No saved flashcards</p>
+          <button
+            onClick={generateRandomFlashcard}
+            disabled={generatingFlashcards}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
+          >
+            {generatingFlashcards
+              ? "Generating..."
+              : "Generate First Flashcard"}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {savedFlashcards.map((flashcard) => (
+          <div
+            key={flashcard.id}
+            className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-100"
+          >
+            <div className="p-8">
+              <div className="flex justify-between items-start mb-6">
+                <div className="flex flex-wrap gap-2">
+                  {flashcard.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <button
+                  onClick={() => deleteFlashcard(flashcard.id)}
+                  className="text-gray-400 hover:text-red-500 transition-colors duration-200 p-2 rounded-full hover:bg-red-50"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-gray-800 font-medium mb-4 text-lg">
+                {flashcard.question}
+              </p>
+              <p className="text-sm text-gray-600 italic mb-6">
+                {flashcard.answer}
+              </p>
+              <div className="text-xs text-gray-400">
+                {new Date(flashcard.createdAt).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderFlashcardView = () => {
+    if (!currentFlashcard) {
+      return (
+        <div className="text-center text-gray-500 py-10">
+          <div className="text-7xl mb-6">🤔</div>
+          <p className="text-2xl font-medium mb-4">No flashcard generated</p>
+          <button
+            onClick={generateRandomFlashcard}
+            disabled={generatingFlashcards}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
+          >
+            {generatingFlashcards ? "Generating..." : "Generate Flashcard"}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[70vh]">
+        <div className="bg-white shadow-2xl rounded-3xl p-10 w-full max-w-3xl relative overflow-hidden border border-gray-100">
+          <div className="absolute top-6 left-6 flex flex-wrap gap-2">
+            {currentFlashcard.tags.map((tag) => (
+              <span
+                key={tag}
+                className="bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-12 mb-16">
+            <h2 className="text-3xl font-bold mb-8 text-gray-800">
+              Flashcard Question
+            </h2>
+            <p className="text-gray-700 text-xl mb-10">
+              {currentFlashcard.question}
+            </p>
+
+            {showFlashcardAnswer ? (
+              <>
+                <h3 className="text-2xl font-semibold mt-10 mb-6 text-gray-800">
+                  Answer
+                </h3>
+                <p className="text-gray-600 text-lg">
+                  {
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(
+                          marked(currentFlashcard.answer)
+                        ),
+                      }}
+                    />
+                  }
+                </p>
+                <div className="mt-6">
+                  <h4 className="text-xl font-semibold text-gray-800">
+                    Original Context
+                  </h4>
+                  <p className="text-gray-500 italic">
+                    {currentFlashcard.originalText}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={() => setShowFlashcardAnswer(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
+              >
+                Show Answer
+              </button>
+            )}
+          </div>
+
+          <div className="flex justify-center items-center gap-8">
+            {!savedFlashcards.some(
+              (fc) =>
+                fc.question === currentFlashcard.question &&
+                fc.answer === currentFlashcard.answer
+            ) && (
+              <button
+                onClick={saveFlashcard}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg flex items-center gap-2"
+              >
+                <Save size={20} /> Save Flashcard
+              </button>
+            )}
+            <button
+              onClick={generateRandomFlashcard}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
+            >
+              Generate New Flashcard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const allTags = useMemo(() => {
     const tagSet = new Set<string>();
@@ -141,166 +327,10 @@ const NotesManager: React.FC = () => {
     );
   };
 
-  const nextFlashcard = () => {
-    setCurrentFlashcardIndex((prev) => (prev + 1) % flashcardNotes.length);
-    setShowFlashcardAnswer(false);
-  };
-
-  const prevFlashcard = () => {
-    setCurrentFlashcardIndex((prev) =>
-      prev === 0 ? flashcardNotes.length - 1 : prev - 1
-    );
-    setShowFlashcardAnswer(false);
-  };
-
   const deleteNote = async (noteId: string) => {
     const updatedNotes = notes.filter((note) => note.id !== noteId);
     setNotes(updatedNotes);
     await storage.setItem("local:notes", updatedNotes);
-  };
-
-  const renderNotesView = () => (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {filteredNotes.map((note) => (
-        <div
-          key={note.id}
-          className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-100"
-        >
-          <div className="p-8">
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex flex-wrap gap-2">
-                {note.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <button
-                onClick={() => deleteNote(note.id)}
-                className="text-gray-400 hover:text-red-500 transition-colors duration-200 p-2 rounded-full hover:bg-red-50"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <p className="text-gray-800 font-medium mb-4 text-lg">
-              {note.selectedText}
-            </p>
-            {note.text && (
-              <p className="text-sm text-gray-600 italic mb-6">{note.text}</p>
-            )}
-            <div className="text-xs text-gray-400">
-              {new Date(note.createdAt).toLocaleString()}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const renderFlashcardsView = () => {
-    if (filteredFlashcards.length === 0) {
-      return (
-        <div className="text-center text-gray-500 py-10">
-          <div className="text-7xl mb-6">🤔</div>
-          <p className="text-2xl font-medium mb-4">No flashcards available</p>
-          <button
-            onClick={generateFlashcards}
-            disabled={generatingFlashcards}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
-          >
-            {generatingFlashcards ? "Generating..." : "Generate AI Flashcards"}
-          </button>
-        </div>
-      );
-    }
-
-    const currentFlashcard = filteredFlashcards[currentFlashcardIndex];
-    const originalNote = notes.find(
-      (note) => note.id === currentFlashcard.originalNoteId
-    )!;
-
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh]">
-        <div className="bg-white shadow-2xl rounded-3xl p-10 w-full max-w-3xl relative overflow-hidden border border-gray-100">
-          <div className="absolute top-6 left-6 flex flex-wrap gap-2">
-            {originalNote.tags.map((tag) => (
-              <span
-                key={tag}
-                className="bg-blue-50 text-blue-600 text-xs font-medium px-3 py-1 rounded-full"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          <div className="mt-12 mb-16">
-            <h2 className="text-3xl font-bold mb-8 text-gray-800">
-              Flashcard Question
-            </h2>
-            <p className="text-gray-700 text-xl mb-10">
-              {currentFlashcard.question}
-            </p>
-
-            {showFlashcardAnswer ? (
-              <>
-                <h3 className="text-2xl font-semibold mt-10 mb-6 text-gray-800">
-                  Answer
-                </h3>
-                <p className="text-gray-600 text-lg">
-                  {currentFlashcard.answer}
-                </p>
-                <div className="mt-6">
-                  <h4 className="text-xl font-semibold text-gray-800">
-                    Original Context
-                  </h4>
-                  <p className="text-gray-500 italic">
-                    {originalNote.selectedText}
-                  </p>
-                </div>
-              </>
-            ) : (
-              <button
-                onClick={() => setShowFlashcardAnswer(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
-              >
-                Show Answer
-              </button>
-            )}
-          </div>
-
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex justify-center items-center gap-8">
-            <button
-              onClick={() => {
-                setCurrentFlashcardIndex((prev) =>
-                  prev === 0 ? filteredFlashcards.length - 1 : prev - 1
-                );
-                setShowFlashcardAnswer(false);
-              }}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-800 p-4 rounded-full transition-colors duration-200 shadow-md"
-            >
-              <ChevronLeft size={24} />
-            </button>
-            <div className="text-gray-500 font-medium text-lg">
-              {currentFlashcardIndex + 1} / {filteredFlashcards.length}
-            </div>
-            <button
-              onClick={() => {
-                setCurrentFlashcardIndex(
-                  (prev) => (prev + 1) % filteredFlashcards.length
-                );
-                setShowFlashcardAnswer(false);
-              }}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-800 p-4 rounded-full transition-colors duration-200 shadow-md"
-            >
-              <ChevronRight size={24} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -312,26 +342,44 @@ const NotesManager: React.FC = () => {
               <>
                 <StickyNote className="mr-4 text-yellow-500" size={40} /> Notes
               </>
+            ) : currentView === "flashcards" ? (
+              <>
+                <BookOpen className="mr-4 text-blue-500" size={40} /> Flashcard
+              </>
             ) : (
               <>
-                <BookOpen className="mr-4 text-blue-500" size={40} /> Flashcards
+                <BookOpen className="mr-4 text-green-500" size={40} /> Saved
+                Flashcards
               </>
             )}
           </h1>
           <div className="flex items-center gap-4">
             <button
-              onClick={() =>
-                setCurrentView((prev) =>
-                  prev === "notes" ? "flashcards" : "notes"
-                )
-              }
+              onClick={() => {
+                switch (currentView) {
+                  case "notes":
+                    setCurrentView("flashcards");
+                    generateRandomFlashcard();
+                    break;
+                  case "flashcards":
+                    setCurrentView("saved-flashcards");
+                    break;
+                  case "saved-flashcards":
+                    setCurrentView("notes");
+                    break;
+                }
+              }}
               className="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg text-lg font-semibold"
             >
               {currentView === "notes"
-                ? "Switch to Flashcards Mode"
-                : "Switch to Notes"}
+                ? "Switch to Flashcards"
+                : currentView === "flashcards"
+                ? "View Saved Flashcards"
+                : "Back to Notes"}
               {currentView === "notes" ? (
                 <BookOpen size={24} />
+              ) : currentView === "flashcards" ? (
+                <Save size={24} />
               ) : (
                 <StickyNote size={24} />
               )}
@@ -339,45 +387,23 @@ const NotesManager: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-4 flex flex-col md:flex-row gap-6">
-          <div className="relative flex-grow">
-            <input
-              type="text"
-              placeholder="Search notes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-14 pr-6 py-4 border-2 border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-lg"
-            />
-            <Search
-              className="absolute left-5 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={24}
-            />
-          </div>
-          <div className="relative">
-            <button className="bg-white hover:bg-gray-100 text-gray-800 font-semibold py-4 px-6 border border-gray-300 rounded-full shadow-md transition-colors duration-200 text-lg">
-              <Filter size={24} />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex gap-3 mb-10 flex-wrap">
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => toggleTag(tag)}
-              className={`flex items-center gap-2 px-5 py-3 rounded-full text-base font-medium transition-all duration-200 ${
-                selectedTags.includes(tag)
-                  ? "bg-blue-500 text-white hover:bg-blue-600 shadow-md"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <Tag size={18} />
-              {tag}
-            </button>
-          ))}
-        </div>
-
-        {currentView === "notes" ? renderNotesView() : renderFlashcardsView()}
+        {/* Rest of the existing UI remains the same */}
+        {currentView === "notes" ? (
+          <NotesView
+            toggleTag={toggleTag}
+            allTags={allTags}
+            selectedTags={selectedTags}
+            filteredNotes={filteredNotes}
+            deleteNote={deleteNote}
+            key={selectedTags.join()}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+          />
+        ) : currentView === "flashcards" ? (
+          renderFlashcardView()
+        ) : (
+          renderSavedFlashcardsView()
+        )}
       </div>
     </div>
   );

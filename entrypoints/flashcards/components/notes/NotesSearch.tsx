@@ -1,6 +1,6 @@
 // src/components/notes/NotesSearch.tsx
 import React from "react";
-import { Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 
 interface NotesSearchProps {
   searchTerm: string;
