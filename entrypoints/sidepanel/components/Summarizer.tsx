@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 
-const MAX_MODEL_CHARS = 4000;
+// const MAX_MODEL_CHARS = 4000;
 const summaryOptions = {
   type: ["key-points", "tl;dr", "teaser", "headline"],
   length: ["short", "medium", "long"],
@@ -74,13 +74,6 @@ const Summarizer: React.FC<SummarizerProps> = ({ onTriggerSummarization }) => {
       return;
     }
 
-    if (pageContent.length > MAX_MODEL_CHARS) {
-      updateWarning(
-        `Text is too long for summarization with ${pageContent.length} characters (maximum supported content length is ~4000 characters).`
-      );
-      return;
-    }
-
     updateWarning(""); // Clear any previous warnings
     showSummary("Loading...");
     const summaryText = await generateSummary(pageContent);
@@ -90,10 +83,12 @@ const Summarizer: React.FC<SummarizerProps> = ({ onTriggerSummarization }) => {
   useEffect(() => {
     // Example of using chrome.storage or any content change listener
     chrome.storage.session.get("pageContent", ({ pageContent }) => {
+      console.log(pageContent);
       setPageContent(pageContent);
     });
 
     chrome.storage.session.onChanged.addListener((changes) => {
+      console.log(changes);
       const newContent = changes["pageContent"]?.newValue;
       if (pageContent !== newContent) {
         setPageContent(newContent);
@@ -110,7 +105,9 @@ const Summarizer: React.FC<SummarizerProps> = ({ onTriggerSummarization }) => {
 
   return (
     <div className="p-2 space-y-6 rounded-xl shadow-md">
-      <h2 className="text-2xl font-bold">Summarizer</h2>
+      <h2 className="border-b text-lg font-semibold border-gray-200 dark:border-gray-700">
+        Summarizer
+      </h2>
       {warning && (
         <div
           className="mt-4 text-red-500 font-semibold bg-red-100 dark:bg-red-900 p-4 rounded-xl"

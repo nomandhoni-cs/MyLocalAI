@@ -194,7 +194,7 @@ const Prompt: React.FC = () => {
     <div className="flex flex-col max-w-4xl mx-auto">
       {/* Header with Info and Reset Buttons */}
       <div className="p-2 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-        <h1 className="text-lg font-semibold">AI Chat</h1>
+        <h1 className="text-lg font-semibold">Chat with MyLocal AI</h1>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setShowDetails(!showDetails)}
@@ -216,7 +216,7 @@ const Prompt: React.FC = () => {
       {/* Input Area */}
       <form
         onSubmit={handleSubmit}
-        className="p-2 border-t border-gray-200 dark:border-gray-700 flex items-center space-x-2 "
+        className="p-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center space-x-2 "
       >
         <textarea
           value={prompt}
@@ -239,7 +239,7 @@ const Prompt: React.FC = () => {
       </form>
 
       {/* Messages Container with Scrollbar */}
-      <div className="flex-grow h-[420px] overflow-y-auto p-2 space-y-4 scrollbar scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 scrollbar-track-gray-100 dark:scrollbar-track-gray-900">
+      <div className="flex-grow h-[600px] overflow-y-auto p-2 space-y-4 scrollbar scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 scrollbar-track-gray-100 dark:scrollbar-track-gray-900">
         {messages.map((message, index) => (
           <div
             key={index}

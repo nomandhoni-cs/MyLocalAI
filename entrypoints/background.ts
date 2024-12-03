@@ -27,19 +27,19 @@ export default defineBackground(() => {
   //   showSummary(tabId);
   // });
 
-  // async function showSummary(tabId) {
-  //   const tab = await chrome.tabs.get(tabId);
-  //   if (!tab.url.startsWith("http")) {
-  //     return;
-  //   }
-  //   const injection = await chrome.scripting.executeScript({
-  //     target: { tabId },
-  //     files: ["injected.js"],
-  //   });
-  //   // console.log(injection)
-  //   chrome.storage.session.set({ pageContent: injection[0].result });
-  // }
-  // console.log("Hello background!", { id: browser.runtime.id });
+  async function showSummary(tabId) {
+    const tab = await chrome.tabs.get(tabId);
+    if (!tab.url.startsWith("http")) {
+      return;
+    }
+    const injection = await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["injected.js"],
+    });
+    // console.log(injection)
+    chrome.storage.session.set({ pageContent: injection[0].result });
+  }
+  console.log("Hello background!", { id: browser.runtime.id });
 
   // Context menu start
   // chrome.contextMenus.create({
@@ -76,6 +76,7 @@ export default defineBackground(() => {
     // }
     if (info.menuItemId === "open_side_panel") {
       chrome.sidePanel.open({ tabId: tab.id });
+      showSummary(tab.id);
     }
 
     if (info.menuItemId === "save_this_selection") {
