@@ -250,7 +250,7 @@ const Prompt: React.FC = () => {
         ))}
 
         {isLoading && (
-          <div className="text-center italic text-gray-500 dark:text-gray-400">
+          <div className="text-center italic text-gray-500 dark:text-gray-400 animate-pulse">
             Generating response...
           </div>
         )}

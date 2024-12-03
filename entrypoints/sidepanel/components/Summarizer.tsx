@@ -9,7 +9,11 @@ const summaryOptions = {
   format: ["markdown", "plain-text"],
 };
 
-const Summarizer = () => {
+type SummarizerProps = {
+  onTriggerSummarization: () => void;
+};
+
+const Summarizer: React.FC<SummarizerProps> = ({ onTriggerSummarization }) => {
   const [pageContent, setPageContent] = useState("");
   const [summary, setSummary] = useState("");
   const [warning, setWarning] = useState("");
@@ -64,7 +68,7 @@ const Summarizer = () => {
     return summarizationSession;
   };
 
-  const handleSummarizeClick = async () => {
+  const handleSummarization = async () => {
     if (!pageContent) {
       updateWarning("There's nothing to summarize");
       return;
@@ -97,22 +101,26 @@ const Summarizer = () => {
     });
   }, [pageContent]);
 
+  useEffect(() => {
+    if (onTriggerSummarization) {
+      onTriggerSummarization();
+      handleSummarization();
+    }
+  }, [onTriggerSummarization]); // Dependency on prop trigger
+
   return (
-    <div className="p-6 space-y-6 ">
+    <div className="p-2 space-y-6 rounded-xl shadow-md">
       <h2 className="text-2xl font-bold">Summarizer</h2>
-      <button
-        onClick={handleSummarizeClick}
-        className="bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-      >
-        Summarize Current Page
-      </button>
       {warning && (
-        <div className="mt-4 text-red-500 font-semibold" role="alert">
+        <div
+          className="mt-4 text-red-500 font-semibold bg-red-100 dark:bg-red-900 p-4 rounded-xl"
+          role="alert"
+        >
           {warning}
         </div>
       )}
       <div
-        className="mt-6 p-4 border border-gray-300 dark:border-gray-700 rounded-md"
+        className="mt-6 p-4 border border-gray-300 dark:border-gray-700 rounded-xl"
         dangerouslySetInnerHTML={{ __html: summary }}
       />
     </div>

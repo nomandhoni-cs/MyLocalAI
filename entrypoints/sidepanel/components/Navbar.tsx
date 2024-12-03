@@ -2,7 +2,7 @@ import { Layers3 } from "lucide-react";
 import { ThemeChanger } from "./ThemeChanger";
 import reactLogo from "@/assets/react.svg";
 
-const Navbar = () => {
+const Navbar = ({ handleTriggerSummarization }) => {
   return (
     <div className="flex justify-center items-center w-full mx-auto pt-2">
       <div className="flex items-center space-x-4">
@@ -21,6 +21,7 @@ const Navbar = () => {
           <div className="w-px h-6 bg-white/20" />
           <a
             href="#summary"
+            onClick={handleTriggerSummarization}
             className="flex items-center text-base text-white hover:text-white/80 transition-colors"
           >
             Summary
