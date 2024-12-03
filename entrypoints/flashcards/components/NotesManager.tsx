@@ -231,15 +231,15 @@ const NotesManager: React.FC = () => {
                   <h4 className="text-xl font-semibold text-gray-800">
                     Original Context
                   </h4>
-                  <p className="text-gray-500 italic">
-                    {currentFlashcard.originalText}
-                  </p>
+                  <div className="text-gray-500 italic" dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(marked(currentFlashcard.originalText)),
+                  }}/>
                 </div>
               </>
             ) : (
               <button
                 onClick={() => setShowPracticeAnswer(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
+                className="border-2 border-blue-500 text-blue-500 font-bold py-4 px-8 rounded-full transition-colors duration-200 transform hover:scale-105 shadow-lg"
               >
                 Show Answer
               </button>
@@ -438,7 +438,7 @@ const NotesManager: React.FC = () => {
       return (
         <div className="text-center text-gray-500 py-10">
           <div className="text-7xl mb-6">🤔</div>
-          <p className="text-2xl font-medium mb-4">No flashcard generated</p>
+          <p className="text-2xl font-medium mb-4">Generating a flashcard for you</p>
           <button
             onClick={generateRandomFlashcard}
             disabled={generatingFlashcards}
@@ -468,9 +468,9 @@ const NotesManager: React.FC = () => {
             <h2 className="text-3xl font-bold mb-8 text-gray-800">
               Flashcard Question
             </h2>
-            <p className="text-gray-700 text-xl mb-10">
-              {currentFlashcard.question}
-            </p>
+            < div className="text-gray-700 text-xl mb-10" dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(marked(currentFlashcard.question)),
+                  }}/>
 
             {showFlashcardAnswer ? (
               <>
@@ -572,7 +572,7 @@ const NotesManager: React.FC = () => {
 
   return (
     <div className="bg-gray-50 min-h-[calc(100vh-64px)]">
-      <div className="container mx-auto px-6 py-4">
+      <div className="max-w-full mx-auto px-6 py-4">
           <div className="flex items-center justify-between mb-5">
           <h1 className="text-5xl font-bold text-gray-800 mb-6 md:mb-0 flex items-center">
             {currentView === "notes" ? (

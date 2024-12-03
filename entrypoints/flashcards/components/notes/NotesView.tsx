@@ -44,8 +44,8 @@ const NotesView: React.FC<NotesViewProps> = ({
           key={note.id}
           className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl border border-gray-100"
         >
-          <div className="p-8">
-            <div className="flex justify-between items-start mb-6">
+          <div className="p-5">
+            <div className="flex justify-between items-start mb-2">
               <div className="flex flex-wrap gap-2">
                 {note.tags.map((tag) => (
                   <span
@@ -63,13 +63,13 @@ const NotesView: React.FC<NotesViewProps> = ({
                 <X size={20} />
               </button>
             </div>
-            <p className="text-gray-800 font-medium mb-4 text-lg">
+            <p className="text-gray-800 text-left font-medium mb-4 text-lg">
               {note.selectedText}
             </p>
             {note.text && (
               <p className="text-sm text-gray-600 italic mb-6">{note.text}</p>
             )}
-            <div className="text-xs text-gray-400">
+            <div className="text-base text-left text-gray-400">
               {new Date(note.createdAt).toLocaleString()}
             </div>
           </div>
