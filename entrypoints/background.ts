@@ -20,12 +20,12 @@ export default defineBackground(() => {
     .setPanelBehavior({ openPanelOnActionClick: true })
     .catch((error) => console.error(error));
 
-  // chrome.tabs.onActivated.addListener((activeInfo) => {
-  //   showSummary(activeInfo.tabId);
-  // });
-  // chrome.tabs.onUpdated.addListener(async (tabId) => {
-  //   showSummary(tabId);
-  // });
+  chrome.tabs.onActivated.addListener((activeInfo) => {
+    showSummary(activeInfo.tabId);
+  });
+  chrome.tabs.onUpdated.addListener(async (tabId) => {
+    showSummary(tabId);
+  });
 
   async function showSummary(tabId) {
     const tab = await chrome.tabs.get(tabId);
@@ -36,6 +36,7 @@ export default defineBackground(() => {
       target: { tabId },
       files: ["injected.js"],
     });
+    console.log(injection[0].result);
     // console.log(injection)
     chrome.storage.session.set({ pageContent: injection[0].result });
   }
@@ -60,7 +61,7 @@ export default defineBackground(() => {
 
   chrome.contextMenus.create({
     id: "save_this_selection",
-    title: "Save this as Notes",
+    title: "Save this as Note",
     contexts: ["selection"],
   });
 

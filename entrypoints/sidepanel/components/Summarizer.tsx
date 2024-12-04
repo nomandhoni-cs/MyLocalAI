@@ -2,18 +2,13 @@ import React, { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 
-// const MAX_MODEL_CHARS = 4000;
 const summaryOptions = {
   type: ["key-points", "tl;dr", "teaser", "headline"],
   length: ["short", "medium", "long"],
   format: ["markdown", "plain-text"],
 };
 
-type SummarizerProps = {
-  onTriggerSummarization: () => void;
-};
-
-const Summarizer: React.FC<SummarizerProps> = ({ onTriggerSummarization }) => {
+const Summarizer: React.FC = () => {
   const [pageContent, setPageContent] = useState("");
   const [summary, setSummary] = useState("");
   const [warning, setWarning] = useState("");
@@ -81,45 +76,45 @@ const Summarizer: React.FC<SummarizerProps> = ({ onTriggerSummarization }) => {
   };
 
   useEffect(() => {
-    // Example of using chrome.storage or any content change listener
+    // Fetch page content from chrome storage
     chrome.storage.session.get("pageContent", ({ pageContent }) => {
-      console.log(pageContent);
       setPageContent(pageContent);
     });
 
-    chrome.storage.session.onChanged.addListener((changes) => {
-      console.log(changes);
+    // Listen for content changes
+    const listener = (changes: any) => {
       const newContent = changes["pageContent"]?.newValue;
-      if (pageContent !== newContent) {
+      if (newContent && newContent !== pageContent) {
         setPageContent(newContent);
       }
-    });
-  }, [pageContent]);
+    };
+    chrome.storage.session.onChanged.addListener(listener);
 
+    // Cleanup listener
+    return () => {
+      chrome.storage.session.onChanged.removeListener(listener);
+    };
+  }, []);
+
+  // Trigger summarization whenever pageContent changes
   useEffect(() => {
-    if (onTriggerSummarization) {
-      onTriggerSummarization();
+    if (pageContent) {
       handleSummarization();
     }
-  }, [onTriggerSummarization]); // Dependency on prop trigger
+  }, [pageContent]);
 
   return (
-    <div className="p-2 space-y-6 rounded-xl shadow-md">
-      <h2 className="border-b text-lg font-semibold border-gray-200 dark:border-gray-700">
+    <div className="summarizer mt-4 px-4 py-2 rounded-2xl">
+      <h2 className="text-xl font-semibold mb-2 border-b-2 border-gray-300">
         Summarizer
       </h2>
-      {warning && (
+      {warning && <div className="warning">{warning}</div>}
+      {summary && (
         <div
-          className="mt-4 text-red-500 font-semibold bg-red-100 dark:bg-red-900 p-4 rounded-xl"
-          role="alert"
-        >
-          {warning}
-        </div>
+          className="summary rounded-2xl"
+          dangerouslySetInnerHTML={{ __html: summary }}
+        />
       )}
-      <div
-        className="mt-6 p-4 border border-gray-300 dark:border-gray-700 rounded-xl"
-        dangerouslySetInnerHTML={{ __html: summary }}
-      />
     </div>
   );
 };
