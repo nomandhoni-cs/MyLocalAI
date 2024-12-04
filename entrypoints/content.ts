@@ -176,37 +176,39 @@ async function createSummarizationSession(
 }
 
 // Write and Rewrite start
-let btnContainer = createButtonContainer();
+let btnContainer: HTMLElement | null = null;
 
-function onFocusIn(event) {
-  const el = event.target;
-  if (
-    el.contentEditable &&
-    el.matches("input, textarea") &&
-    el.type.match(/email|number|search|text|url/)
-  ) {
+function onFocusIn(event: FocusEvent) {
+  const el = event.target as HTMLElement;
+
+  // Check if the focused element is valid (input, textarea, or contentEditable)
+  if (el.matches("input, textarea") || el.contentEditable === "true") {
     appendButton(el);
   }
 }
 
-function appendButton(textElement) {
+function appendButton(textElement: HTMLElement) {
   // Remove existing button container if it exists
-  const existingContainer = document.querySelector(".ai-button-container");
-  if (existingContainer) existingContainer.remove();
+  if (btnContainer) {
+    btnContainer.remove();
+  }
 
-  const parentElement = textElement.parentElement;
+  const parentElement = textElement.parentElement!;
   parentElement.style.position = "relative";
 
+  // Create new button container and inject into the DOM
+  btnContainer = createButtonContainer();
   btnContainer.className = "ai-button-container";
   btnContainer.style.position = "absolute";
-  btnContainer.style.top = "2%";
-  btnContainer.style.right = "2%";
+  btnContainer.style.top = "50%";
+  btnContainer.style.right = "10px";
+  btnContainer.style.transform = "translateY(-50%)";
   btnContainer.style.zIndex = "9999";
 
-  parentElement.insertBefore(btnContainer, textElement.nextElementSibling);
+  parentElement.appendChild(btnContainer);
 }
 
-function createButtonContainer() {
+function createButtonContainer(): HTMLElement {
   // Create a container for both Write and Rewrite buttons
   const container = document.createElement("div");
   container.style.display = "inline-flex";
@@ -215,20 +217,54 @@ function createButtonContainer() {
   // Create Write button
   const writeButton = document.createElement("button");
   writeButton.textContent = "Write";
-  writeButton.style.padding = "5px";
-  writeButton.onclick = async (event) => {
+  writeButton.style.padding = "8px 16px";
+  writeButton.style.fontSize = "14px";
+  writeButton.style.fontWeight = "600";
+  writeButton.style.color = "#fff";
+  writeButton.style.backgroundColor = "#4CAF50"; // Green background
+  writeButton.style.border = "none";
+  writeButton.style.borderRadius = "5px";
+  writeButton.style.cursor = "pointer";
+  writeButton.style.transition = "background-color 0.3s ease-in-out";
+  writeButton.style.boxShadow = "0 2px 5px rgba(0, 0, 0, 0.1)";
+  writeButton.onclick = async (event: MouseEvent) => {
     event.preventDefault();
     await handleWrite();
+  };
+
+  // Hover effect for Write button
+  writeButton.onmouseenter = () => {
+    writeButton.style.backgroundColor = "#45a049"; // Darker green on hover
+  };
+  writeButton.onmouseleave = () => {
+    writeButton.style.backgroundColor = "#4CAF50"; // Reset to original color
   };
   container.appendChild(writeButton);
 
   // Create Rewrite button
   const rewriteButton = document.createElement("button");
   rewriteButton.textContent = "Rewrite";
-  rewriteButton.style.padding = "5px";
-  rewriteButton.onclick = async (event) => {
+  rewriteButton.style.padding = "8px 16px";
+  rewriteButton.style.fontSize = "14px";
+  rewriteButton.style.fontWeight = "600";
+  rewriteButton.style.color = "#fff";
+  rewriteButton.style.backgroundColor = "#FF5722"; // Orange background
+  rewriteButton.style.border = "none";
+  rewriteButton.style.borderRadius = "5px";
+  rewriteButton.style.cursor = "pointer";
+  rewriteButton.style.transition = "background-color 0.3s ease-in-out";
+  rewriteButton.style.boxShadow = "0 2px 5px rgba(0, 0, 0, 0.1)";
+  rewriteButton.onclick = async (event: MouseEvent) => {
     event.preventDefault();
     await handleRewrite();
+  };
+
+  // Hover effect for Rewrite button
+  rewriteButton.onmouseenter = () => {
+    rewriteButton.style.backgroundColor = "#E64A19"; // Darker orange on hover
+  };
+  rewriteButton.onmouseleave = () => {
+    rewriteButton.style.backgroundColor = "#FF5722"; // Reset to original color
   };
   container.appendChild(rewriteButton);
 
@@ -239,61 +275,62 @@ async function handleWrite() {
   const userInput = prompt("Enter text to write:");
   if (!userInput) return;
 
-  // Call the AI writer API and get the response (mocked here)
-  const aiResponse = await self.ai.writer
-    .create({
-      tone: "neutral", // You can adjust the tone, format, etc.
-      length: "medium",
-      format: "plain",
-    })
-    .writeStreaming(userInput);
+  // Call the AI writer API and get the response
+  const writer = await self.ai.writer.create({
+    tone: "neutral", // Adjust the tone as necessary
+    length: "medium",
+    format: "plain",
+  });
 
+  const aiResponse = await writer.writeStreaming(userInput);
   let fullResponse = "";
   for await (const chunk of aiResponse) {
     fullResponse += chunk.trim();
   }
 
-  const focusedElement = document.activeElement;
+  const focusedElement = document.activeElement as HTMLElement;
   if (focusedElement.matches("input, textarea")) {
-    focusedElement.value = fullResponse;
-  } else if (focusedElement.contentEditable) {
+    (focusedElement as HTMLInputElement).value = fullResponse;
+  } else if (focusedElement.contentEditable === "true") {
     focusedElement.innerHTML = DOMPurify.sanitize(fullResponse);
   }
+
+  writer.destroy();
 }
 
 async function handleRewrite() {
-  const focusedElement = document.activeElement;
+  const focusedElement = document.activeElement as HTMLElement;
   let currentText = "";
 
   if (focusedElement.matches("input, textarea")) {
-    currentText = focusedElement.value;
-  } else if (focusedElement.contentEditable) {
+    currentText = (focusedElement as HTMLInputElement).value;
+  } else if (focusedElement.contentEditable === "true") {
     currentText = focusedElement.innerText;
   }
 
   if (!currentText) return alert("No text found to rewrite.");
 
-  // Call the AI rewriter API and get the response (mocked here)
-  const aiResponse = await self.ai.rewriter
-    .create({
-      tone: "neutral", // Adjust settings as necessary
-      length: "medium",
-      format: "plain",
-    })
-    .rewriteStreaming(currentText);
+  // Call the AI rewriter API and get the response
+  const rewriter = await self.ai.rewriter.create({
+    tone: "neutral", // Adjust the tone as necessary
+    length: "medium",
+    format: "plain",
+  });
 
+  const aiResponse = await rewriter.rewriteStreaming(currentText);
   let fullResponse = "";
   for await (const chunk of aiResponse) {
     fullResponse += chunk.trim();
   }
 
   if (focusedElement.matches("input, textarea")) {
-    focusedElement.value = fullResponse;
-  } else if (focusedElement.contentEditable) {
+    (focusedElement as HTMLInputElement).value = fullResponse;
+  } else if (focusedElement.contentEditable === "true") {
     focusedElement.innerHTML = DOMPurify.sanitize(fullResponse);
   }
+
+  rewriter.destroy();
 }
-// Write and Rewrite end
 export default defineContentScript({
   matches: ["https://*/*"],
   main() {
