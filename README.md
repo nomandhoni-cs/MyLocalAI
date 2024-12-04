@@ -39,10 +39,14 @@ The inspiration for **MyLocal AI** came from the need for tools that enhance pro
 
 ## 🛠️ Technologies  
 
-- **JavaScript** for core functionality.  
-- **HTML5 & CSS3** for a clean and intuitive user interface.  
-- **AI Models** to power flashcards, summaries, and chat.  
-- **Local Storage** to securely store all user data on the device.  
+We built **MyLocal AI** using cutting-edge technologies to provide a seamless and fast experience:
+- **JavaScript** for the core logic and interactivity.
+- **React JS** for the core logic and interactivity.
+- **WXT.dev** for the framework and easier build process.
+- **HTML5/CSS** for the clean, intuitive interface.
+- **AI Models** to power the flashcards, summarization, and chat features.
+- **Local Storage** to ensure all data is kept securely on the user's device.
+- The extension was designed to work in a variety of modern browsers to maximize accessibility.
 
 ---
 
